@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.example.news.presentation.onboarding.OnboardingScreen
 import com.example.news.ui.theme.NewsTheme
 
 class MainActivity : ComponentActivity() {
@@ -21,12 +22,11 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
 
         setContent {
-            NewsTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+            NewsTheme(
+                dynamicColor = true
+            ) {
+                Scaffold(modifier = Modifier.fillMaxSize()) { _ ->
+                    OnboardingScreen()
                 }
             }
         }
@@ -34,18 +34,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    NewsTheme {
-        Greeting("Android")
+fun MainScreenPreview() {
+    NewsTheme(
+        dynamicColor = true
+    ) {
+        Scaffold(modifier = Modifier.fillMaxSize()) { _ ->
+            OnboardingScreen()
+        }
     }
 }
