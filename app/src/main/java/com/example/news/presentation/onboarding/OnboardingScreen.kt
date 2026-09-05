@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.news.presentation.common.NewsButton
 import com.example.news.presentation.common.NewsTextButton
 import com.example.news.presentation.onboarding.Dimens.MediumPadding0
@@ -30,7 +31,18 @@ import kotlinx.coroutines.launch
 import kotlin.collections.listOf
 
 @Composable
-fun OnboardingScreen(modifier: Modifier = Modifier) {
+fun OnboardingScreen(
+    modifier: Modifier = Modifier,
+    viewmodel: OnboardingViewModel = hiltViewModel()
+) {
+    OnboardingContent(modifier, viewmodel)
+}
+
+@Composable
+private fun OnboardingContent(
+    modifier: Modifier = Modifier,
+    viewmodel: OnboardingViewModel = hiltViewModel()
+) {
     Column(modifier = modifier.fillMaxSize()) {
         val pages = Page.getPages()
 
@@ -86,8 +98,7 @@ fun OnboardingScreen(modifier: Modifier = Modifier) {
                 ) {
                     scope.launch {
                         if (pageState.currentPage == pages.size - 1) {
-                            // todo main screen
-                            Log.d("check_nav", "OnboardingScreen: done")
+                            viewmodel.onEvent(OnboardingEvent.SaveAppEntry)
                         } else {
                             pageState.animateScrollToPage(
                                 page = pageState.currentPage + 1

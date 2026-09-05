@@ -12,10 +12,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
 import com.example.news.domain.manager.LocalUserManger
 import com.example.news.presentation.onboarding.OnboardingScreen
+import com.example.news.presentation.onboarding.OnboardingViewModel
 import com.example.news.ui.theme.NewsTheme
+import com.example.news.usecase.app_entry.AppEntryUseCases
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import dagger.hilt.android.AndroidEntryPoint
@@ -24,7 +27,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     @Inject
-    lateinit var localUserManager: LocalUserManger
+    lateinit var appUseCases: AppEntryUseCases
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -46,7 +49,7 @@ class MainActivity : ComponentActivity() {
 
     private fun testInitHilt() {
         lifecycleScope.launch {
-            localUserManager.readAppEntry().collect {
+            appUseCases.readAppEntry().collect {
                 Log.d("check_hilt", "testInitHilt: $it")
             }
         }
@@ -60,7 +63,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreenPreview() {
     NewsTheme {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            OnboardingScreen(modifier = Modifier.padding(innerPadding))
+            OnboardingScreen()
         }
     }
 }
