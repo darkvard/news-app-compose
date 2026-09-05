@@ -30,8 +30,8 @@ import kotlinx.coroutines.launch
 import kotlin.collections.listOf
 
 @Composable
-fun OnboardingScreen() {
-    Column(modifier = Modifier.fillMaxSize()) {
+fun OnboardingScreen(modifier: Modifier = Modifier) {
+    Column(modifier = modifier.fillMaxSize()) {
         val pages = Page.getPages()
 
         val pageState = rememberPagerState(initialPage = 0) {

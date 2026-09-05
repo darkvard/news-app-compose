@@ -17,15 +17,14 @@ import com.example.news.ui.theme.NewsTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         installSplashScreen()
 
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
         setContent {
-            NewsTheme(
-                dynamicColor = true
-            ) {
-                Scaffold(modifier = Modifier.fillMaxSize()) { _ ->
+            NewsTheme {
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     OnboardingScreen()
                 }
             }
@@ -37,11 +36,9 @@ class MainActivity : ComponentActivity() {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun MainScreenPreview() {
-    NewsTheme(
-        dynamicColor = true
-    ) {
-        Scaffold(modifier = Modifier.fillMaxSize()) { _ ->
-            OnboardingScreen()
+    NewsTheme {
+        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+            OnboardingScreen(modifier = Modifier.padding(innerPadding))
         }
     }
 }
