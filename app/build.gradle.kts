@@ -78,6 +78,10 @@ dependencies {
     // Accompanist
     implementation(libs.accompanist.systemuicontroller)
 
+    // Paging
+    implementation(libs.androidx.paging.common)
+    implementation(libs.androidx.paging.compose)
+
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
