@@ -18,9 +18,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.news.R
-import com.example.news.presentation.onboarding.Dimens
 import com.example.news.presentation.onboarding.Page
 import com.example.news.ui.theme.NewsTheme
+import com.example.news.util.Dimens
 
 @Composable
 fun OnBoardingPage(
@@ -56,7 +56,6 @@ fun OnBoardingPage(
 @Preview(name = "Light", showBackground = true, showSystemUi = true)
 @Preview(
     name = "Dark",
-    showBackground = true,
     showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES
 )

@@ -2,10 +2,14 @@ package com.example.news.presentation.navgraph
 
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.paging.compose.collectAsLazyPagingItems
+import com.example.news.presentation.home.HomeScreen
+import com.example.news.presentation.home.HomeViewModel
 import com.example.news.presentation.onboarding.OnboardingScreen
 
 @Composable
@@ -27,17 +31,19 @@ fun NavGraph(startDestination: String) {
             startDestination = Route.HomeScreen.route
         ) {
             composable(route = Route.HomeScreen.route) {
-
+                val homeVM: HomeViewModel = hiltViewModel()
+                val articles = homeVM.news.collectAsLazyPagingItems()
+                HomeScreen(articles) { }
             }
-            composable(route = Route.SearchScreen.route) {
-
-            }
-            composable(route = Route.BookmarkScreen.route) {
-
-            }
-            composable(route = Route.DetailsScreen.route) {
-
-            }
+//            composable(route = Route.SearchScreen.route) {
+//
+//            }
+//            composable(route = Route.BookmarkScreen.route) {
+//
+//            }
+//            composable(route = Route.DetailsScreen.route) {
+//
+//            }
         }
     }
 }

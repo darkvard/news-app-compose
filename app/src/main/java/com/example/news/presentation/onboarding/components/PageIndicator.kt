@@ -14,7 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.news.presentation.onboarding.Dimens.IndicatorSize
+import com.example.news.util.Dimens
 
 @Composable
 fun PageIndicator(
@@ -29,7 +29,7 @@ fun PageIndicator(
             Box(
                 modifier = Modifier
                     .padding(end = 4.dp)
-                    .size(IndicatorSize)
+                    .size(Dimens.IndicatorSize)
                     .clip(CircleShape)
                     .background(
                         if (selectedPage == it) {

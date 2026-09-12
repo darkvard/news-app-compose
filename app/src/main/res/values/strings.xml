@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">News</string>
+    <string name="no_title">No title</string>
+    <string name="unknown_source">Unknown source</string>
 </resources>
