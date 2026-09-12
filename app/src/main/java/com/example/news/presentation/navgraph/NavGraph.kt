@@ -11,6 +11,8 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.news.presentation.home.HomeScreen
 import com.example.news.presentation.home.HomeViewModel
 import com.example.news.presentation.onboarding.OnboardingScreen
+import com.example.news.presentation.search.SearchScreen
+import com.example.news.presentation.search.SearchViewModel
 
 @Composable
 fun NavGraph(startDestination: String) {
@@ -31,19 +33,13 @@ fun NavGraph(startDestination: String) {
             startDestination = Route.HomeScreen.route
         ) {
             composable(route = Route.HomeScreen.route) {
-                val homeVM: HomeViewModel = hiltViewModel()
-                val articles = homeVM.news.collectAsLazyPagingItems()
-                HomeScreen(articles) { }
+//                val homeVM: HomeViewModel = hiltViewModel()
+//                val articles = homeVM.news.collectAsLazyPagingItems()
+//                HomeScreen(articles) { }
+
+                val searchVM: SearchViewModel = hiltViewModel()
+                SearchScreen(state = searchVM.state.value, event = searchVM::onEvent)
             }
-//            composable(route = Route.SearchScreen.route) {
-//
-//            }
-//            composable(route = Route.BookmarkScreen.route) {
-//
-//            }
-//            composable(route = Route.DetailsScreen.route) {
-//
-//            }
         }
     }
 }
