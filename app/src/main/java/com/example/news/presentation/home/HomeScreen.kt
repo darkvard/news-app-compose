@@ -35,7 +35,9 @@ import kotlinx.coroutines.flow.flowOf
 
 @Composable
 fun HomeScreen(
-    articles: LazyPagingItems<Article>, navigate: (String) -> Unit
+    articles: LazyPagingItems<Article>,
+    navigateToSearch: () -> Unit,
+    navigateToDetails: (Article) -> Unit
 ) {
     val title by remember {
         derivedStateOf {
@@ -72,9 +74,7 @@ fun HomeScreen(
             readOnly = true,
             onValueChange = {},
             onSearch = {},
-            onClick = {
-                navigate(Route.SearchScreen.route)
-            }
+            onClick = navigateToSearch
         )
 
         Spacer(modifier = Modifier.height(Dimens.ExtraSmallPadding3))
@@ -95,9 +95,7 @@ fun HomeScreen(
         ArticleList(
             modifier = Modifier.padding(horizontal = Dimens.ExtraSmallPadding6),
             articles = articles,
-            onClick = {
-                //TODO: Navigate to Details Screen
-            }
+            onClick = navigateToDetails
         )
     }
 }
@@ -119,7 +117,9 @@ fun HomeScreenPreview() {
         )
     }
     val articles = flowOf(PagingData.from(dummyArticles)).collectAsLazyPagingItems()
-    HomeScreen(articles) {
-
-    }
+    HomeScreen(
+        articles,
+        navigateToSearch = {},
+        navigateToDetails = { }
+    )
 }
