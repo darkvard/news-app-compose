@@ -14,7 +14,7 @@ import com.example.news.usecase.app_entry.AppEntryUseCases
 import com.example.news.usecase.app_entry.ReadAppEntry
 import com.example.news.usecase.app_entry.SaveAppEntry
 import com.example.news.usecase.news.DeleteArticle
-import com.example.news.usecase.news.GetArticle
+import com.example.news.usecase.news.GetArticles
 import com.example.news.usecase.news.GetNews
 import com.example.news.usecase.news.NewsUseCases
 import com.example.news.usecase.news.SearchNews
@@ -91,7 +91,7 @@ object AppModule {
         return NewsUseCases(
             getNews = GetNews(newsRepository),
             searchNews = SearchNews(newsRepository),
-            getArticle = GetArticle(newsDao),
+            getArticles = GetArticles(newsDao),
             upsertArticle = UpsertArticle(newsDao),
             deleteArticle = DeleteArticle(newsDao)
         )
