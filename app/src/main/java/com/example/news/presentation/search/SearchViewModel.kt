@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.cachedIn
-import com.example.news.usecase.news.NewsUseCases
+import com.example.news.usecase.news.SearchNews
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.onEach
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    val newsUseCases: NewsUseCases
+    val searchNewsUseCase: SearchNews
 ) : ViewModel() {
 
     private var _state = mutableStateOf(SearchState())
@@ -48,7 +48,7 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun searchNews(query: String) {
-        val articles = newsUseCases.searchNews(
+        val articles = searchNewsUseCase(
             searchQuery = query,
             sources = listOf("bbc-news", "abc-news", "google-news")
         ).cachedIn(viewModelScope)

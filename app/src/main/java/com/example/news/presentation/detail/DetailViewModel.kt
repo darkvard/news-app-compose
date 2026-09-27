@@ -6,7 +6,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.news.domain.model.Article
-import com.example.news.usecase.news.NewsUseCases
+import com.example.news.usecase.news.DeleteArticle
+import com.example.news.usecase.news.GetSavedArticle
+import com.example.news.usecase.news.UpsertArticle
 import com.example.news.util.UIComponent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -14,7 +16,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
-    private val newsUseCases: NewsUseCases
+    private val getSavedArticleUseCase: GetSavedArticle,
+    private val deleteArticleUseCase: DeleteArticle,
+    private val upsertArticleUseCase: UpsertArticle
 ) : ViewModel() {
 
     var sideEffect by mutableStateOf<UIComponent?>(null)
@@ -24,7 +28,7 @@ class DetailViewModel @Inject constructor(
         when (event) {
             is DetailEvent.UpsertDeleteArticle -> {
                 viewModelScope.launch {
-                    val article = newsUseCases.getArticle(event.article.url ?: "")
+                    val article = getSavedArticleUseCase(event.article.url ?: "")
                     if (article == null) {
                         upsertArticle(event.article)
                     } else {
@@ -40,12 +44,12 @@ class DetailViewModel @Inject constructor(
     }
 
     private suspend fun deleteArticle(article: Article) {
-        newsUseCases.deleteArticle(article)
+        deleteArticleUseCase(article)
         sideEffect = UIComponent.Toast("Article deleted")
     }
 
     private suspend fun upsertArticle(article: Article) {
-        newsUseCases.upsertArticle(article)
+        upsertArticleUseCase(article)
         sideEffect = UIComponent.Toast("Article inserted")
     }
 }

@@ -6,7 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.news.presentation.navgraph.Route
-import com.example.news.usecase.app_entry.AppEntryUseCases
+import com.example.news.usecase.app_entry.ReadAppEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.delay
@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.onEach
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val appEntryUseCases: AppEntryUseCases
+    private val readAppEntry: ReadAppEntry,
 ) : ViewModel() {
 
     private val _splashCondition: MutableState<Boolean> = mutableStateOf(true)
@@ -26,7 +26,7 @@ class MainViewModel @Inject constructor(
     val startDestination: State<String> get() = _startDestination
 
     init {
-        appEntryUseCases.readAppEntry().onEach { shouldStartFromHomeScreen ->
+        readAppEntry().onEach { shouldStartFromHomeScreen ->
             if (shouldStartFromHomeScreen) {
                 _startDestination.value = Route.NewsNavigation.route
             } else {

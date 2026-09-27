@@ -1,5 +1,6 @@
 package com.example.news.data.manager
 
+import android.app.Application
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -10,9 +11,10 @@ import com.example.news.domain.manager.LocalUserManger
 import com.example.news.util.Constants
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
-class LocalUserManagerImpl(
-    private val context: Context
+class LocalUserManagerImpl @Inject constructor (
+    private val application: Application
 ) : LocalUserManger {
 
     private val readOnlyProperty = preferencesDataStore(name = Constants.USER_SETTINGS)
@@ -20,13 +22,13 @@ class LocalUserManagerImpl(
     val Context.dataStore: DataStore<Preferences> by readOnlyProperty
 
     override suspend fun saveAppEntry() {
-        context.dataStore.edit {
+        application.dataStore.edit {
             it[PreferenceKeys.APP_ENTRY] = true
         }
     }
 
     override fun readAppEntry(): Flow<Boolean> {
-        return context.dataStore.data.map {
+        return application.dataStore.data.map {
             it[PreferenceKeys.APP_ENTRY] ?: false
         }
     }
