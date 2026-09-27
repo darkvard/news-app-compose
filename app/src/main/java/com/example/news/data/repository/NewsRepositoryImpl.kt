@@ -52,4 +52,8 @@ class NewsRepositoryImpl(
         newsDao.delete(article)
     }
 
+    override suspend fun getArticle(url: String): Article? {
+        return newsDao.getArticle(url = url)
+    }
+
 }

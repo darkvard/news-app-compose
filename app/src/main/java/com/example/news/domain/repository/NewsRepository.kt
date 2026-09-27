@@ -16,4 +16,5 @@ interface NewsRepository {
 
     suspend fun deleteArticle(article: Article)
 
+    suspend fun getArticle(url: String): Article?
 }
