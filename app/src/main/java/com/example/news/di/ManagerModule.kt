@@ -1,7 +1,9 @@
 package com.example.news.di
 
 import com.example.news.data.manager.LocalUserManagerImpl
-import com.example.news.domain.manager.LocalUserManger
+import com.example.news.data.network.ConnectivityNetworkMonitor
+import com.example.news.domain.manager.LocalUserManager
+import com.example.news.domain.manager.NetworkMonitor
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -14,6 +16,9 @@ abstract class ManagerModule {
 
     @Binds
     @Singleton
-    abstract fun bindLocalUserManager(localUserManagerImpl: LocalUserManagerImpl): LocalUserManger
+    abstract fun bindLocalUserManager(impl: LocalUserManagerImpl): LocalUserManager
 
+    @Binds
+    @Singleton
+    abstract fun bindNetworkMonitor(impl: ConnectivityNetworkMonitor): NetworkMonitor
 }

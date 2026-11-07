@@ -1,40 +1,33 @@
 package com.example.news.data.manager
 
-import android.app.Application
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
-import com.example.news.domain.manager.LocalUserManger
-import com.example.news.util.Constants
+import com.example.news.domain.manager.LocalUserManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
-class LocalUserManagerImpl @Inject constructor (
-    private val application: Application
-) : LocalUserManger {
+/** Top-level delegate: DataStore must be a single instance per file for the whole process. */
+private val Context.userSettings: DataStore<Preferences> by preferencesDataStore(name = "user_settings")
 
-    private val readOnlyProperty = preferencesDataStore(name = Constants.USER_SETTINGS)
-
-    val Context.dataStore: DataStore<Preferences> by readOnlyProperty
+class LocalUserManagerImpl @Inject constructor(
+    @ApplicationContext private val context: Context
+) : LocalUserManager {
 
     override suspend fun saveAppEntry() {
-        application.dataStore.edit {
-            it[PreferenceKeys.APP_ENTRY] = true
-        }
+        context.userSettings.edit { it[APP_ENTRY] = true }
     }
 
-    override fun readAppEntry(): Flow<Boolean> {
-        return application.dataStore.data.map {
-            it[PreferenceKeys.APP_ENTRY] ?: false
-        }
-    }
+    override fun readAppEntry(): Flow<Boolean> =
+        context.userSettings.data.map { it[APP_ENTRY] ?: false }
 
-    private object PreferenceKeys {
-        val APP_ENTRY = booleanPreferencesKey(Constants.APP_ENTRY)
+    private companion object {
+        /** true once the user finished onboarding. */
+        val APP_ENTRY = booleanPreferencesKey("app_entry")
     }
-
 }

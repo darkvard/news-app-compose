@@ -8,7 +8,6 @@ data class Page(
     val description: String,
     @DrawableRes val image: Int
 ) {
-
     companion object {
         private val images = listOf(
             R.drawable.img_ob_1,
@@ -18,7 +17,8 @@ data class Page(
             R.drawable.img_ob_5,
         )
 
-        fun getPages(): List<Page> = images.map { image ->
+        // Placeholder copy from the tutorial
+        val all: List<Page> = images.map { image ->
             Page(
                 title = "Lorem Ipsum is simply dummy",
                 description = "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
@@ -26,6 +26,4 @@ data class Page(
             )
         }
     }
-
 }
-

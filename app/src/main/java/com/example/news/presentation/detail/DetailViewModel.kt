@@ -1,55 +1,55 @@
 package com.example.news.presentation.detail
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.example.news.domain.model.Article
-import com.example.news.usecase.news.DeleteArticle
-import com.example.news.usecase.news.GetSavedArticle
-import com.example.news.usecase.news.UpsertArticle
-import com.example.news.util.UIComponent
+import com.example.news.R
+import com.example.news.domain.usecase.news.ObserveIsBookmarked
+import com.example.news.domain.usecase.news.ToggleBookmark
+import com.example.news.presentation.base.MviViewModel
+import com.example.news.presentation.navgraph.detailsArticle
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
-    private val getSavedArticleUseCase: GetSavedArticle,
-    private val deleteArticleUseCase: DeleteArticle,
-    private val upsertArticleUseCase: UpsertArticle
-) : ViewModel() {
+    savedStateHandle: SavedStateHandle,
+    observeIsBookmarked: ObserveIsBookmarked,
+    private val toggleBookmark: ToggleBookmark
+) : MviViewModel<DetailState, DetailIntent, DetailEffect>(
+    // Type-safe nav argument; restored automatically after process death
+    DetailState(article = savedStateHandle.detailsArticle())
+) {
 
-    var sideEffect by mutableStateOf<UIComponent?>(null)
-        private set
+    init {
+        // Straight from Room: correct on entry and updated after every toggle
+        observeIsBookmarked(currentState.article.url)
+            .onEach { isBookmarked -> setState { copy(isBookmarked = isBookmarked) } }
+            .launchIn(viewModelScope)
+    }
 
-    fun onEvents(event: DetailEvent) {
-        when (event) {
-            is DetailEvent.UpsertDeleteArticle -> {
-                viewModelScope.launch {
-                    val article = getSavedArticleUseCase(event.article.url ?: "")
-                    if (article == null) {
-                        upsertArticle(event.article)
-                    } else {
-                        deleteArticle(event.article)
-                    }
-                }
-            }
-
-            DetailEvent.RemoveSideEffect -> {
-                sideEffect = null
-            }
+    override fun onIntent(intent: DetailIntent) {
+        val url = currentState.article.url
+        when (intent) {
+            DetailIntent.ToggleBookmark -> onToggleBookmark()
+            DetailIntent.Share -> sendEffect(DetailEffect.ShareUrl(url))
+            DetailIntent.OpenInBrowser -> sendEffect(DetailEffect.OpenUrl(url))
         }
     }
 
-    private suspend fun deleteArticle(article: Article) {
-        deleteArticleUseCase(article)
-        sideEffect = UIComponent.Toast("Article deleted")
-    }
-
-    private suspend fun upsertArticle(article: Article) {
-        upsertArticleUseCase(article)
-        sideEffect = UIComponent.Toast("Article inserted")
+    private fun onToggleBookmark() {
+        viewModelScope.launch {
+            val message = try {
+                if (toggleBookmark(currentState.article)) R.string.bookmark_saved else R.string.bookmark_removed
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                R.string.bookmark_failed
+            }
+            sendEffect(DetailEffect.ShowMessage(message))
+        }
     }
 }

@@ -1,40 +1,32 @@
 package com.example.news.presentation.mainActivity
 
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.news.presentation.navgraph.Route
-import com.example.news.usecase.app_entry.ReadAppEntry
+import com.example.news.domain.usecase.app_entry.ReadAppEntry
+import com.example.news.presentation.base.MviViewModel
+import com.example.news.presentation.navgraph.Destination
 import dagger.hilt.android.lifecycle.HiltViewModel
-import jakarta.inject.Inject
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val readAppEntry: ReadAppEntry,
-) : ViewModel() {
-
-    private val _splashCondition: MutableState<Boolean> = mutableStateOf(true)
-    val splashCondition: State<Boolean> get() = _splashCondition
-
-    private val _startDestination: MutableState<String> =
-        mutableStateOf(Route.AppStartNavigation.route)
-    val startDestination: State<String> get() = _startDestination
+    readAppEntry: ReadAppEntry,
+) : MviViewModel<MainState, Nothing, Nothing>(MainState()) {
 
     init {
-        readAppEntry().onEach { shouldStartFromHomeScreen ->
-            if (shouldStartFromHomeScreen) {
-                _startDestination.value = Route.NewsNavigation.route
-            } else {
-                _startDestination.value = Route.AppStartNavigation.route
+        // Keeps observing: finishing onboarding flips the start destination to the news graph
+        readAppEntry()
+            .onEach { onboardingDone ->
+                setState {
+                    copy(
+                        isLoading = false,
+                        startDestination = if (onboardingDone) Destination.NewsGraph else Destination.AppStartGraph
+                    )
+                }
             }
-            delay(200)
-            _splashCondition.value = false
-        }.launchIn(viewModelScope)
+            .launchIn(viewModelScope)
     }
 
+    override fun onIntent(intent: Nothing) = Unit
 }

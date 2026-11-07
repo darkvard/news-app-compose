@@ -1,10 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
-    alias(libs.plugins.androidx.room)
+}
+
+val localProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use(::load)
 }
 
 android {
@@ -21,6 +26,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // NewsAPI key is read from local.properties (NEWS_API_KEY=...) so it never lands in git
+        buildConfigField(
+            "String",
+            "NEWS_API_KEY",
+            "\"${localProperties.getProperty("NEWS_API_KEY", "")}\""
+        )
     }
 
     buildTypes {
@@ -36,11 +48,8 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
-}
-
-room {
-    schemaDirectory("$projectDir/schemas")
 }
 
 dependencies {
@@ -53,6 +62,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     // Splash API
     implementation(libs.androidx.core.splashscreen)
@@ -67,14 +77,11 @@ dependencies {
 
     // Retrofit
     implementation(libs.retrofit)
-    implementation(libs.converter.gson)
-
-    // Gson
-    implementation(libs.gson)
+    implementation(libs.converter.kotlinx.serialization)
+    implementation(libs.okhttp.logging.interceptor)
 
     // Kotlinx Serialization
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.retrofit2.kotlinx.serialization.converter)
 
     // Coil
     implementation(libs.coil.compose)
@@ -84,6 +91,10 @@ dependencies {
 
     // Compose Foundation
     implementation(libs.androidx.compose.foundation)
+
+    // Haze (backdrop blur for the floating bottom bar)
+    implementation(libs.haze)
+    implementation(libs.haze.materials)
 
     // Accompanist
     implementation(libs.accompanist.systemuicontroller)
@@ -95,9 +106,15 @@ dependencies {
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.room.paging)
     ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.androidx.paging.testing)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.turbine)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

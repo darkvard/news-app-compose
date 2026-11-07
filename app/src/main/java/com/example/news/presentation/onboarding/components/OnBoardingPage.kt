@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -13,14 +14,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.news.R
 import com.example.news.presentation.onboarding.Page
 import com.example.news.ui.theme.NewsTheme
-import com.example.news.util.Dimens
+import com.example.news.ui.theme.Spacing
+import androidx.compose.ui.unit.dp
+
+private object OnBoardingPageDefaults {
+    const val ImageHeightFraction = 0.6f
+    val TextHorizontalPadding = 30.dp
+}
 
 @Composable
 fun OnBoardingPage(
@@ -31,23 +36,23 @@ fun OnBoardingPage(
         Image(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.6f),
+                .fillMaxHeight(OnBoardingPageDefaults.ImageHeightFraction),
             painter = painterResource(id = page.image),
             contentDescription = null,
             contentScale = ContentScale.Crop
         )
-        Spacer(modifier = Modifier.padding(Dimens.MediumPadding1))
+        Spacer(modifier = Modifier.height(Spacing.ExtraLarge))
         Text(
-            modifier = Modifier.padding(horizontal = Dimens.MediumPadding2),
+            modifier = Modifier.padding(horizontal = OnBoardingPageDefaults.TextHorizontalPadding),
             text = page.title,
-            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
-            color = colorResource(id = R.color.display_small)
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            modifier = Modifier.padding(horizontal = Dimens.MediumPadding2),
+            modifier = Modifier.padding(horizontal = OnBoardingPageDefaults.TextHorizontalPadding),
             text = page.description,
-            style = MaterialTheme.typography.bodyMedium,
-            color = colorResource(id = R.color.text_medium)
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -59,7 +64,7 @@ fun OnBoardingPage(
     showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES
 )
-fun OnBoardingPagePreview() {
+private fun OnBoardingPagePreview() {
     NewsTheme {
         Surface {
             OnBoardingPage(

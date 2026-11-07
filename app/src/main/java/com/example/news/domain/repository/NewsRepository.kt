@@ -6,15 +6,19 @@ import kotlinx.coroutines.flow.Flow
 
 interface NewsRepository {
 
-    fun getNews(sources: List<String>): Flow<PagingData<Article>>
+    /** Home feed. Backed by the offline cache, refreshed from the network. */
+    fun getNews(): Flow<PagingData<Article>>
 
-    fun searchNews(searchQuery: String, sources: List<String>): Flow<PagingData<Article>>
+    /** Network-only search. */
+    fun searchNews(query: String): Flow<PagingData<Article>>
 
-    suspend fun getArticles(): Flow<List<Article>>
+    /** Saved articles, newest first. Emits again whenever bookmarks change. */
+    fun observeBookmarks(): Flow<List<Article>>
 
-    suspend fun upsertArticle(article: Article)
+    fun observeIsBookmarked(url: String): Flow<Boolean>
 
-    suspend fun deleteArticle(article: Article)
+    /** Saves the article if it isn't bookmarked yet, removes it otherwise. Returns the new state. */
+    suspend fun toggleBookmark(article: Article): Boolean
 
-    suspend fun getArticle(url: String): Article?
+    suspend fun deleteBookmarks(urls: Set<String>)
 }

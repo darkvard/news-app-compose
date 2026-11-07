@@ -14,7 +14,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.news.util.Dimens
+
+private object PageIndicatorDefaults {
+    val DotSize = 14.dp
+    val DotSpacing = 4.dp
+}
 
 @Composable
 fun PageIndicator(
@@ -22,14 +26,14 @@ fun PageIndicator(
     pageSize: Int,
     selectedPage: Int,
     selectedColor: Color = MaterialTheme.colorScheme.primary,
-    unselectedColor: Color = Color.Gray
+    unselectedColor: Color = MaterialTheme.colorScheme.outlineVariant
 ) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.SpaceBetween) {
         repeat(pageSize) {
             Box(
                 modifier = Modifier
-                    .padding(end = 4.dp)
-                    .size(Dimens.IndicatorSize)
+                    .padding(end = PageIndicatorDefaults.DotSpacing)
+                    .size(PageIndicatorDefaults.DotSize)
                     .clip(CircleShape)
                     .background(
                         if (selectedPage == it) {
@@ -45,8 +49,8 @@ fun PageIndicator(
 
 
 @Composable
-@Preview()
-fun PageIndicatorPreview() {
+@Preview
+private fun PageIndicatorPreview() {
     PageIndicator(
         pageSize = 5,
         selectedPage = 2,

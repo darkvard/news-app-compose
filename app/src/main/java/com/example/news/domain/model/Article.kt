@@ -1,17 +1,16 @@
 package com.example.news.domain.model
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-
-@Entity
+/**
+ * Pure domain model (no Android / framework annotations).
+ * [url] is the article's identity: bookmarks and the offline cache are keyed by it.
+ */
 data class Article(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val url: String? = null,
+    val url: String,
+    val title: String? = null,
     val author: String? = null,
-    val content: String? = null,
     val description: String? = null,
+    val content: String? = null,
     val publishedAt: String? = null,
     val source: Source? = null,
-    val title: String? = null,
     val urlToImage: String? = null
 )
