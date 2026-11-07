@@ -1,29 +1,22 @@
 package com.example.news.presentation.onboarding
 
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import com.example.news.R
 
 data class Page(
-    val title: String,
-    val description: String,
+    @StringRes val title: Int,
+    @StringRes val description: Int,
     @DrawableRes val image: Int
 ) {
     companion object {
-        private val images = listOf(
-            R.drawable.img_ob_1,
-            R.drawable.img_ob_2,
-            R.drawable.img_ob_3,
-            R.drawable.img_ob_4,
-            R.drawable.img_ob_5,
+        /** One page per main feature of the app. */
+        val all: List<Page> = listOf(
+            Page(R.string.onboarding_title_1, R.string.onboarding_desc_1, R.drawable.img_ob_1),
+            Page(R.string.onboarding_title_2, R.string.onboarding_desc_2, R.drawable.img_ob_2),
+            Page(R.string.onboarding_title_3, R.string.onboarding_desc_3, R.drawable.img_ob_3),
+            Page(R.string.onboarding_title_4, R.string.onboarding_desc_4, R.drawable.img_ob_4),
+            Page(R.string.onboarding_title_5, R.string.onboarding_desc_5, R.drawable.img_ob_5),
         )
-
-        // Placeholder copy from the tutorial
-        val all: List<Page> = images.map { image ->
-            Page(
-                title = "Lorem Ipsum is simply dummy",
-                description = "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
-                image = image,
-            )
-        }
     }
 }

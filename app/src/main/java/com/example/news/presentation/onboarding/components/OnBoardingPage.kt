@@ -15,8 +15,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.news.R
 import com.example.news.presentation.onboarding.Page
 import com.example.news.ui.theme.NewsTheme
 import com.example.news.ui.theme.Spacing
@@ -44,13 +44,13 @@ fun OnBoardingPage(
         Spacer(modifier = Modifier.height(Spacing.ExtraLarge))
         Text(
             modifier = Modifier.padding(horizontal = OnBoardingPageDefaults.TextHorizontalPadding),
-            text = page.title,
+            text = stringResource(page.title),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             modifier = Modifier.padding(horizontal = OnBoardingPageDefaults.TextHorizontalPadding),
-            text = page.description,
+            text = stringResource(page.description),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -68,11 +68,7 @@ private fun OnBoardingPagePreview() {
     NewsTheme {
         Surface {
             OnBoardingPage(
-                page = Page(
-                    title = "Lorem Ipsum is simply dummy",
-                    description = "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
-                    image = R.drawable.img_ob_1
-                )
+                page = Page.all.first()
             )
         }
     }

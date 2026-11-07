@@ -120,7 +120,7 @@ MainActivity.onCreate
   - giữ biểu tượng AdChoices (SDK tự gắn vào góc).
 - **Vòng đời**: mỗi màn feed có một `FeedNativeAdsViewModel` riêng, scope theo navigation entry. Ad được cache theo slot (cuộn ngược lên không load lại) và `destroy()` hết trong `onCleared`.
   - Vì sao là ViewModel? Vì native ad phải sống **đúng bằng** thời gian màn hình tồn tại, và đó chính là việc ViewModel làm.
-- **Kiểm tra**: ở bản debug, SDK hiện **"AdMob native ad validator"**. App này đã đạt *"No implementation issues found"*.
+- **Kiểm tra**: ở bản debug, SDK hiện **"AdMob native ad validator"**. App này đã đạt *"No implementation issues found"*. Sau đó validator được tắt bằng meta-data `NATIVE_AD_DEBUGGER_ENABLED=false` trong manifest, vì nếu để bật thì mỗi native ad lại có một popup che feed. Khi sửa `native_ad_card.xml`, đổi giá trị thành `true` để kiểm tra lại.
 
 ### Banner (`BannerAd`)
 - **Anchored adaptive**: rộng bằng màn hình, chiều cao do Google tính (`AdSize.getLargeAnchoredAdaptiveBannerAdSize`).

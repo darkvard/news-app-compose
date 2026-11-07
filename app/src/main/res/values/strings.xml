@@ -34,6 +34,16 @@
     <string name="onboarding_next">Next</string>
     <string name="onboarding_back">Back</string>
     <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_title_1">Your daily news, all in one place</string>
+    <string name="onboarding_desc_1">Catch up on the latest headlines from BBC, ABC and other trusted sources. Pull down to refresh, and the newest stories land right at the top of your feed.</string>
+    <string name="onboarding_title_2">Keep reading, even offline</string>
+    <string name="onboarding_desc_2">Headlines are saved on your device as they load. Lost signal on the train? Keep reading, and the feed refreshes by itself once you are back online.</string>
+    <string name="onboarding_title_3">Find any story</string>
+    <string name="onboarding_desc_3">Look up any topic, team or name across trusted news sources. Results keep loading as you scroll, so you can dig as deep as you like.</string>
+    <string name="onboarding_title_4">Save it for later</string>
+    <string name="onboarding_desc_4">Tap the bookmark icon to keep an article on your device, ready to read anytime. Long-press to select several and clear them in one go.</string>
+    <string name="onboarding_title_5">Share what matters</string>
+    <string name="onboarding_desc_5">Open the full story in your browser for the complete read, or send the link to friends in a single tap.</string>
 
     <!-- Home -->
     <string name="home_empty_title">No news yet</string>

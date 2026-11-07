@@ -27,6 +27,12 @@
         <meta-data
             android:name="com.google.android.gms.ads.flag.OPTIMIZE_AD_LOADING"
             android:value="true" />
+        <!-- The native ad validator pops up over every *test* native ad. Our layout passed it
+             ("No implementation issues found"), so it is turned off. Set to true to re-check
+             after changing res/layout/native_ad_card.xml. Live ads never show it. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.flag.NATIVE_AD_DEBUGGER_ENABLED"
+            android:value="false" />
 
         <activity
             android:name=".presentation.mainActivity.MainActivity"

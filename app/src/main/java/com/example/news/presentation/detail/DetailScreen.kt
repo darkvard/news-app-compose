@@ -3,8 +3,8 @@ package com.example.news.presentation.detail
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -16,10 +16,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -46,6 +50,7 @@ import com.example.news.presentation.common.formatPublishedAt
 import com.example.news.presentation.detail.components.DetailTopBar
 import com.example.news.ui.theme.NewsTheme
 import com.example.news.ui.theme.Spacing
+import kotlinx.coroutines.launch
 
 private object DetailDefaults {
     const val ImageAspectRatio = 16f / 9f
@@ -62,11 +67,18 @@ fun DetailRoute(
     val context = LocalContext.current
     val ads = LocalAdsManager.current
     val canShowAds by ads.canShowAds.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
-            is DetailEffect.ShowMessage ->
-                Toast.makeText(context, effect.messageRes, Toast.LENGTH_SHORT).show()
+            is DetailEffect.ShowMessage -> {
+                val message = context.getString(effect.messageRes)
+                scope.launch {
+                    snackbarHostState.currentSnackbarData?.dismiss() // rapid toggles: show only the latest
+                    snackbarHostState.showSnackbar(message)
+                }
+            }
             is DetailEffect.ShareUrl -> {
                 ads.skipNextAppOpen() // leaving on purpose: no App Open when coming back
                 context.shareUrl(effect.url)
@@ -82,6 +94,7 @@ fun DetailRoute(
         state = state,
         onIntent = viewModel::onIntent,
         navigateUp = navigateUp,
+        snackbarHostState = snackbarHostState,
         bottomBanner = { if (canShowAds) BannerAd() }
     )
 }
@@ -91,6 +104,7 @@ fun DetailScreen(
     state: DetailState,
     onIntent: (DetailIntent) -> Unit,
     navigateUp: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomBanner: @Composable () -> Unit = {}
 ) {
     Column(
@@ -107,23 +121,32 @@ fun DetailScreen(
             onBackClick = navigateUp
         )
 
-        LazyColumn(
+        // The snackbar lives inside the content area, so the banner below can never cover it
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
-            contentPadding = PaddingValues(
-                start = Spacing.ScreenHorizontal,
-                end = Spacing.ScreenHorizontal,
-                top = Spacing.Small,
-                bottom = Spacing.ExtraLarge
-            )
+                .weight(1f)
         ) {
-            item {
-                ArticleDetailContent(
-                    article = state.article,
-                    onReadFullArticle = { onIntent(DetailIntent.OpenInBrowser) }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = Spacing.ScreenHorizontal,
+                    end = Spacing.ScreenHorizontal,
+                    top = Spacing.Small,
+                    bottom = Spacing.ExtraLarge
                 )
+            ) {
+                item {
+                    ArticleDetailContent(
+                        article = state.article,
+                        onReadFullArticle = { onIntent(DetailIntent.OpenInBrowser) }
+                    )
+                }
             }
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
 
         // Anchored banner: below the content, never overlapping it
