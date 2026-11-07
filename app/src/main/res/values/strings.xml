@@ -26,6 +26,10 @@
     <string name="error_server_message">The server returned an error (%1$d).</string>
     <string name="error_unknown_message">An unexpected error occurred.</string>
 
+    <!-- Ads -->
+    <string name="ad_badge">Ad</string>
+    <string name="cd_privacy_options">Privacy options</string>
+
     <!-- Onboarding -->
     <string name="onboarding_next">Next</string>
     <string name="onboarding_back">Back</string>

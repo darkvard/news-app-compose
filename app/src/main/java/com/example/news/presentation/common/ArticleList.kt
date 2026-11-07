@@ -2,6 +2,7 @@ package com.example.news.presentation.common
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,6 +52,9 @@ private object ArticleListDefaults {
  *
  * [bottomPadding] is the space taken by the floating bottom bar: the list scrolls *under* the bar
  * (so it can be blurred) but its last item can still scroll above it.
+ *
+ * [afterItem] is drawn right below each item (used to insert native ads in the feed without
+ * the list or the paging data knowing anything about ads).
  */
 @Composable
 fun PagingArticleList(
@@ -59,7 +63,8 @@ fun PagingArticleList(
     emptyContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     endOfListMessage: String? = null,
-    bottomPadding: Dp = 0.dp
+    bottomPadding: Dp = 0.dp,
+    afterItem: @Composable (index: Int) -> Unit = {}
 ) {
     val loadState = articles.loadState
     val refresh = loadState.refresh
@@ -90,7 +95,10 @@ fun PagingArticleList(
             contentType = articles.itemContentType { ArticleListDefaults.ARTICLE_CONTENT_TYPE }
         ) { index ->
             articles[index]?.let { article ->
-                ArticleCard(article = article, onClick = { onClick(article) })
+                Column {
+                    ArticleCard(article = article, onClick = { onClick(article) })
+                    afterItem(index)
+                }
             }
         }
         appendStateFooter(

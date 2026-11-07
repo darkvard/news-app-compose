@@ -31,6 +31,7 @@ App đọc tin tức (BBC, ABC, Google News) qua [NewsAPI](https://newsapi.org).
 | **Search** | Tìm kiếm có debounce 400ms, bấm Search trên bàn phím để tìm ngay, nút xoá nhanh, các trạng thái: chưa nhập / không có kết quả / lỗi |
 | **Bookmark** | Danh sách bài đã lưu, tự cập nhật realtime theo Room. **Nhấn giữ** để vào chế độ chọn → chọn nhiều / chọn tất cả → xoá (có dialog xác nhận + snackbar) |
 | **Detail** | Ảnh, tiêu đề, nguồn • tác giả • thời gian, nội dung; lưu/bỏ bookmark (icon đúng trạng thái DB), chia sẻ, mở trình duyệt |
+| **Ads (AdMob)** | Consent GDPR (UMP), App Open (mở app / quay lại), Interstitial khi mở bài (có frequency cap), Native trong feed Home/Search, Banner ở Detail. **Chi tiết: [docs/ads-guide.md](docs/ads-guide.md)** |
 
 **Dùng chung cho cả app**
 - Đủ trạng thái cho mọi màn: **loading (shimmer) / empty / error + Retry / no connection**.
@@ -53,6 +54,7 @@ App đọc tin tức (BBC, ABC, Google News) qua [NewsAPI](https://newsapi.org).
 | Mạng | Retrofit 2.11 + OkHttp (logging chỉ bật ở debug) + kotlinx.serialization |
 | Lưu trữ | Room 2.8 (+ room-paging), DataStore Preferences |
 | Phân trang | Paging 3 (`PagingSource`, `RemoteMediator`) |
+| Ads | Google Mobile Ads 25.5 (AdMob), UMP 4.0 (consent), lifecycle-process |
 | Test | JUnit4, kotlinx-coroutines-test, Turbine, AndroidX Test |
 
 ---
@@ -148,6 +150,8 @@ app/src/main/java/com/example/news/
 │   ├── network/ConnectivityNetworkMonitor.kt
 │   ├── manager/LocalUserManagerImpl.kt   DataStore
 │   └── repository/NewsRepositoryImpl.kt
+│
+├── ads/                               Quảng cáo AdMob + consent (xem docs/ads-guide.md)
 │
 ├── presentation/
 │   ├── base/MviViewModel.kt           ★ base MVVM + MVI (UiState / UiIntent / UiEffect)
@@ -340,6 +344,7 @@ Fake dùng chung cho unit test: `test/.../fake/FakeNewsRepository`, `FakeNetwork
 - `content` của NewsAPI bị cắt ngắn ("… [+1131 chars]"). Màn Detail bỏ đoạn đuôi này và có nút **Read full article** để mở bài gốc.
 - **API key** để trong `local.properties`. Key cũ từng bị commit vào lịch sử git, nên hãy dùng key mới.
 - **Haze dùng bản 1.7.x** vì bản 2.x cần Kotlin 2.4.
+- **`applicationId` là `io.github.darkvard.news`** (namespace code vẫn là `com.example.news`): Google ads server trả 403 cho mọi package `com.example.*`.
 
 ---
 

@@ -36,6 +36,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.news.R
+import com.example.news.ads.LocalAdsManager
+import com.example.news.ads.banner.BannerAd
 import com.example.news.domain.model.Article
 import com.example.news.domain.model.Source
 import com.example.news.presentation.common.NewsButton
@@ -58,29 +60,44 @@ fun DetailRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val ads = LocalAdsManager.current
+    val canShowAds by ads.canShowAds.collectAsStateWithLifecycle()
 
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             is DetailEffect.ShowMessage ->
                 Toast.makeText(context, effect.messageRes, Toast.LENGTH_SHORT).show()
-            is DetailEffect.ShareUrl -> context.shareUrl(effect.url)
-            is DetailEffect.OpenUrl -> context.openInBrowser(effect.url)
+            is DetailEffect.ShareUrl -> {
+                ads.skipNextAppOpen() // leaving on purpose: no App Open when coming back
+                context.shareUrl(effect.url)
+            }
+            is DetailEffect.OpenUrl -> {
+                ads.skipNextAppOpen()
+                context.openInBrowser(effect.url)
+            }
         }
     }
 
-    DetailScreen(state = state, onIntent = viewModel::onIntent, navigateUp = navigateUp)
+    DetailScreen(
+        state = state,
+        onIntent = viewModel::onIntent,
+        navigateUp = navigateUp,
+        bottomBanner = { if (canShowAds) BannerAd() }
+    )
 }
 
 @Composable
 fun DetailScreen(
     state: DetailState,
     onIntent: (DetailIntent) -> Unit,
-    navigateUp: () -> Unit
+    navigateUp: () -> Unit,
+    bottomBanner: @Composable () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
+            .navigationBarsPadding()
     ) {
         DetailTopBar(
             isBookmarked = state.isBookmarked,
@@ -91,7 +108,9 @@ fun DetailScreen(
         )
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
             contentPadding = PaddingValues(
                 start = Spacing.ScreenHorizontal,
                 end = Spacing.ScreenHorizontal,
@@ -106,6 +125,9 @@ fun DetailScreen(
                 )
             }
         }
+
+        // Anchored banner: below the content, never overlapping it
+        bottomBanner()
     }
 }
 
@@ -115,7 +137,7 @@ private fun ArticleDetailContent(article: Article, onReadFullArticle: () -> Unit
     val publishedAt = remember(article.publishedAt) { formatPublishedAt(article.publishedAt) }
     val body = remember(article) { article.readableBody() }
 
-    Column(modifier = Modifier.navigationBarsPadding()) {
+    Column {
         Text(
             text = article.title ?: stringResource(R.string.no_title),
             style = MaterialTheme.typography.headlineSmall,

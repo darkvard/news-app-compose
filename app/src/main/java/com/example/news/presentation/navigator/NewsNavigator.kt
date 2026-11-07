@@ -1,6 +1,8 @@
 package com.example.news.presentation.navigator
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
+import com.example.news.ads.LocalAdsManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -69,7 +71,13 @@ fun NewsNavigator(
     val selectedItem = items.indexOfFirst { item ->
         currentDestination?.hierarchy?.any { it.hasRoute(item.destination::class) } == true
     }
-    val navigateToDetails: (Article) -> Unit = { navController.navigate(Destination.Details(it)) }
+    val ads = LocalAdsManager.current
+    val activity = LocalActivity.current
+    // Navigate first, then (maybe) show an interstitial on top: when it closes, the article is there
+    val navigateToDetails: (Article) -> Unit = { article ->
+        navController.navigate(Destination.Details(article))
+        activity?.let(ads::onArticleOpened)
+    }
 
     // Content behind the floating bar is the haze "source"; the bar blurs it
     val hazeState = rememberHazeState()

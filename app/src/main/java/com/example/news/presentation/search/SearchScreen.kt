@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import com.example.news.ads.nativead.FeedNativeAd
+import com.example.news.ads.nativead.FeedNativeAdsViewModel
+import com.example.news.ads.policy.NativeAdPlacement
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,16 +40,21 @@ import kotlinx.coroutines.flow.flowOf
 fun SearchRoute(
     bottomPadding: Dp,
     navigateToDetails: (Article) -> Unit,
-    viewModel: SearchViewModel = hiltViewModel()
+    viewModel: SearchViewModel = hiltViewModel(),
+    nativeAdsViewModel: FeedNativeAdsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val adPlacement = remember { NativeAdPlacement() }
     SearchScreen(
         state = state,
         query = viewModel.query,
         articles = viewModel.articles.collectAsLazyPagingItems(),
         bottomPadding = bottomPadding,
         onIntent = viewModel::onIntent,
-        navigateToDetails = navigateToDetails
+        navigateToDetails = navigateToDetails,
+        afterArticle = { index ->
+            FeedNativeAd(index = index, placement = adPlacement, viewModel = nativeAdsViewModel)
+        }
     )
 }
 
@@ -56,7 +65,8 @@ fun SearchScreen(
     articles: LazyPagingItems<Article>,
     bottomPadding: Dp,
     onIntent: (SearchIntent) -> Unit,
-    navigateToDetails: (Article) -> Unit
+    navigateToDetails: (Article) -> Unit,
+    afterArticle: @Composable (index: Int) -> Unit = {}
 ) {
     RetryWhenBackOnline(articles = articles, isOnline = state.isOnline)
 
@@ -89,6 +99,7 @@ fun SearchScreen(
                 onClick = navigateToDetails,
                 bottomPadding = bottomPadding,
                 endOfListMessage = stringResource(R.string.search_end_of_list),
+                afterItem = afterArticle,
                 emptyContent = {
                     EmptyState(
                         icon = R.drawable.ic_search_document,

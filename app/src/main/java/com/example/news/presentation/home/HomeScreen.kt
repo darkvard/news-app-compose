@@ -1,6 +1,16 @@
 package com.example.news.presentation.home
 
 import android.content.res.Configuration
+import androidx.activity.compose.LocalActivity
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PrivacyTip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import com.example.news.ads.LocalAdsManager
+import com.example.news.ads.nativead.FeedNativeAd
+import com.example.news.ads.nativead.FeedNativeAdsViewModel
+import com.example.news.ads.policy.NativeAdPlacement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,14 +53,28 @@ import kotlinx.coroutines.flow.flowOf
 fun HomeRoute(
     bottomPadding: Dp,
     navigateToDetails: (Article) -> Unit,
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    nativeAdsViewModel: FeedNativeAdsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val ads = LocalAdsManager.current
+    val activity = LocalActivity.current
+    val isPrivacyOptionsRequired by ads.isPrivacyOptionsRequired.collectAsStateWithLifecycle()
+    val adPlacement = remember { NativeAdPlacement() }
+
     HomeScreen(
         state = state,
         articles = viewModel.articles.collectAsLazyPagingItems(),
         bottomPadding = bottomPadding,
-        navigateToDetails = navigateToDetails
+        navigateToDetails = navigateToDetails,
+        onPrivacyOptionsClick = if (isPrivacyOptionsRequired && activity != null) {
+            { ads.showPrivacyOptions(activity) }
+        } else {
+            null
+        },
+        afterArticle = { index ->
+            FeedNativeAd(index = index, placement = adPlacement, viewModel = nativeAdsViewModel)
+        }
     )
 }
 
@@ -60,7 +84,9 @@ fun HomeScreen(
     state: HomeState,
     articles: LazyPagingItems<Article>,
     bottomPadding: Dp,
-    navigateToDetails: (Article) -> Unit
+    navigateToDetails: (Article) -> Unit,
+    onPrivacyOptionsClick: (() -> Unit)? = null,
+    afterArticle: @Composable (index: Int) -> Unit = {}
 ) {
     RetryWhenBackOnline(articles = articles, isOnline = state.isOnline)
 
@@ -70,7 +96,18 @@ fun HomeScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            ScreenHeader(title = stringResource(R.string.tab_news))
+            ScreenHeader(title = stringResource(R.string.tab_news)) {
+                // GDPR: users in regulated regions must be able to change their consent
+                if (onPrivacyOptionsClick != null) {
+                    IconButton(onClick = onPrivacyOptionsClick) {
+                        Icon(
+                            imageVector = Icons.Outlined.PrivacyTip,
+                            contentDescription = stringResource(R.string.cd_privacy_options),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
 
             PullToRefreshBox(
                 isRefreshing = articles.loadState.refresh is LoadState.Loading && articles.itemCount > 0,
@@ -82,6 +119,7 @@ fun HomeScreen(
                     onClick = navigateToDetails,
                     bottomPadding = bottomPadding,
                     endOfListMessage = stringResource(R.string.home_end_of_list),
+                    afterItem = afterArticle,
                     emptyContent = {
                         EmptyState(
                             icon = R.drawable.ic_search_document,
