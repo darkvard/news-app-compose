@@ -2,6 +2,8 @@
 
 Tài liệu học kèm theo code trong `app/src/main/java/com/example/news/ads/`. Đọc từ trên xuống dưới là nắm được toàn bộ: **có những loại ads nào, đặt ở đâu, vì sao, và code chạy ra sao**.
 
+> Muốn tự code lại ở dự án mới? Đọc mục 1–2 để nắm bức tranh, rồi làm theo **mục 9: tự setup từ đầu, từng bước**.
+
 ---
 
 ## 1. Bức tranh tổng quan
@@ -61,7 +63,7 @@ res/layout/native_ad_card.xml
 
 **Vì sao ads không nằm trong domain?** Ads là chuyện hạ tầng và UI, không phải nghiệp vụ "tin tức". Nếu đưa vào domain, tầng đó sẽ phải biết tới Android. Các *quy tắc* thì vẫn được tách thành class Kotlin thuần (`policy/`) để test, đúng tinh thần Clean Architecture.
 
-**Ai được dùng ads?** Chỉ `XxxRoute` và `NewsNavigator` đọc `LocalAdsManager`. Các `XxxScreen` stateless chỉ nhận lambda hoặc slot (`afterArticle`, `bottomBanner`, `onPrivacyOptionsClick`), nên preview vẫn chạy mà không cần ads.
+**Ai được dùng ads?** Chỉ `XxxRoute` và `NewsNavigator` đọc `LocalAdsManager`. Các `XxxScreen` stateless chỉ nhận lambda hoặc slot (`nativeAds: ListInsert?`, `bottomBanner`, `onPrivacyOptionsClick`), nên preview vẫn chạy mà không cần ads.
 
 ---
 
@@ -79,6 +81,8 @@ MainActivity.onCreate
          (bỏ qua nếu là lần chạy đầu / đang onboarding, hoặc activity được tạo lại sau khi xoay màn)
       5. AppOpen.preload()                 → có sẵn ad cho lần quay lại sau
 ```
+> Cả chuỗi trên chạy trong `startupLock.withLock { ... }` (`Mutex`). Lý do: nếu người dùng xoay màn hình lúc form consent đang mở, Activity cũ bị huỷ và coroutine của nó bị cancel giữa chừng. Mutex bảo đảm Activity mới chạy lại cả chuỗi, còn cờ `isStartupDone` chỉ được bật khi chạy **xong thật**. (Bug này đã gặp thật: trước đây cờ được bật ngay từ đầu, nên xoay màn lúc consent là cả phiên không có ads.)
+
 > Bài học thực tế: lần test đầu tiên, App Open khi quay lại không hiện vì **quên bước 5**. Lần quay lại đầu tiên khi đó mới bắt đầu load. Ads toàn màn phải được **preload trước** thời điểm cần hiện.
 
 ---
@@ -92,10 +96,9 @@ MainActivity.onCreate
   - chưa xong onboarding;
   - đang có ad toàn màn khác (người dùng click interstitial, sang trang nhà quảng cáo rồi quay lại cũng kích hoạt `onStart`!);
   - vừa share hoặc mở browser (`skipNextResume()`);
-  - mới đóng ad toàn màn chưa quá 30 giây.
+  - mới đóng ad toàn màn chưa quá 30 giây (bản debug là 0, xem `AdCooldowns`).
 - **Ad hết hạn sau 4 giờ** (theo khuyến nghị của Google), sau đó phải load lại.
 - **Cần một Activity để show**: theo dõi qua `ActivityLifecycleCallbacks`, bỏ qua `AdActivity` (là activity của chính SDK).
-- **So với SDK Lutech**: chính là `AppOpenManager` và cờ `AdsManager.isUserOutApp`.
 
 ### Interstitial (`InterstitialAdManager` + `InterstitialPolicy`)
 - **Gọi ở đúng 1 chỗ**: lambda `navigateToDetails` trong `NewsNavigator`. **Điều hướng trước, show ad sau**, nên khi người dùng đóng ad thì bài báo đã nằm sẵn bên dưới.
@@ -103,12 +106,13 @@ MainActivity.onCreate
   - không hiện ở lần mở bài đầu tiên, tối đa 1 lần mỗi 3 bài;
   - 2 lần hiện cách nhau ít nhất 60 giây;
   - không hiện trong vòng 30 giây sau App Open.
+  - Các mốc thời gian nằm trong `AdCooldowns` (`AdUnits.kt`). Bản debug đặt hết về 0 qua cờ `ADS_NO_COOLDOWN` để test không phải chờ; release giữ giá trị thật.
 - **Một object ad chỉ show được 1 lần**. Show xong là bỏ tham chiếu và **preload cái tiếp theo**.
 - **Chưa load xong thì thôi, không chờ**. Lần mở bài kế tiếp vẫn đủ điều kiện để thử lại.
 - **Không cho đóng bằng nút Back**: người dùng phải bấm X. Đây là hành vi của chính SDK.
 
 ### Native (`FeedNativeAdsViewModel`, `NativeAdCard`)
-- **Vị trí**: `NativeAdPlacement(firstAfter = 4, interval = 8)` cho ra các index 3, 11, 19... Chuỗi `PagingArticleList` → `afterItem(index)` → `FeedNativeAd`.
+- **Vị trí**: `NativeAdPlacement(firstAfter = 4, interval = 8)` cho ra các index 3, 11, 19... Chuỗi: màn feed tạo `ListInsert(placement::isAdAfter) { FeedNativeAd(...) }` → `PagingArticleList(insert = ...)` → grid chèn một ô **chiếm trọn hàng** sau các index đó.
   - **Paging data không bị trộn ads vào**, ads chỉ là chuyện hiển thị.
 - **Phải dùng `NativeAdView`** (một Android View) và **đăng ký từng asset view** (headline, icon, media, CTA...) thì SDK mới đếm được impression và click.
   - Trong Compose, layout XML được bọc bằng `AndroidView`.
@@ -123,12 +127,13 @@ MainActivity.onCreate
 - **Kiểm tra**: ở bản debug, SDK hiện **"AdMob native ad validator"**. App này đã đạt *"No implementation issues found"*. Sau đó validator được tắt bằng meta-data `NATIVE_AD_DEBUGGER_ENABLED=false` trong manifest, vì nếu để bật thì mỗi native ad lại có một popup che feed. Khi sửa `native_ad_card.xml`, đổi giá trị thành `true` để kiểm tra lại.
 
 ### Banner (`BannerAd`)
-- **Anchored adaptive**: rộng bằng màn hình, chiều cao do Google tính (`AdSize.getLargeAnchoredAdaptiveBannerAdSize`).
+- **Anchored adaptive**: rộng bằng màn hình, chiều cao do Google tính. Màn hình bình thường dùng `getLargeAnchoredAdaptiveBannerAdSize`; màn thấp (điện thoại xoay ngang, `isCompact = true`) dùng `getCurrentOrientationAnchoredAdaptiveBannerAdSize`, thấp hơn nhiều.
 - **Vòng đời**:
   - `LifecycleResumeEffect` → `resume()` / `pause()` (dừng refresh khi màn không hiển thị);
   - `DisposableEffect` → `destroy()`.
 - **Chỉ vẽ khi đã load xong**, nên không fill thì không chiếm chỗ.
 - **Vị trí**: nằm *dưới* nội dung, không đè lên nội dung, và không sát các nút điều hướng.
+- **Preview**: SDK không chạy trong Android Studio Preview, nên khi `LocalInspectionMode.current` là `true`, `BannerAd` vẽ một khung giữ chỗ cùng cỡ. `NativeAdCard` cũng có preview riêng: inflate đúng XML, dùng chung `applyTheme()` với code thật, chỉ thay nội dung bằng dữ liệu mẫu.
 
 ### Consent (`ConsentManager`, UMP SDK)
 - **Bắt buộc với người dùng ở EEA/UK** (GDPR) và một số bang ở Mỹ. Google yêu cầu dùng một CMP được chứng nhận; UMP là CMP của chính Google.
@@ -187,19 +192,19 @@ adb shell pm clear io.github.darkvard.news    # reset consent + về lần chạ
 
 ---
 
-## 7. So sánh với SDK nội bộ Lutech (`com.anonymousboiz:ads`)
-| Khái niệm | Trong app này | SDK Lutech |
-|---|---|---|
-| Điểm truy cập chung | `AdsManager` | `AdsManager` |
-| Cấp ads cho Compose | `AdsProvider` + `LocalAdsManager` | `AdsProvider` (kèm overlay Loading / Welcome back) |
-| Luồng khởi động | `startOnLaunch` (consent → init → App Open) | `loadDataAndShowAds` + `getAdsEventFlow` ở Splash |
-| Chặn App Open khi ra ngoài app | `skipNextAppOpen()` | `AdsManager.isUserOutApp = true` |
-| Bật/tắt, tần suất | Code (`policy/`) | **Firebase Remote Config** (`isShow`, `preLoaded`, `timeOut`...): đổi không cần ra bản mới |
-| Dự phòng khi không có ad | 1 ID mỗi định dạng | `unitId1 → unitId2 → unitId` (nhiều ID theo mức giá, waterfall) |
-| Tắt ads cho người dùng trả phí | Không có | `BillingHelper.isUpgraded()` |
-| Đo lường | Không có | Adjust (+ TikTok) để đo doanh thu ad / tracking campaign |
+## 7. Hướng cải tiến (khi app lớn hơn)
+Bản hiện tại đủ cho một app học tập. Khi app có người dùng thật, đây là những thứ nên thêm, theo thứ tự đáng làm:
 
-→ Đọc xong app này là bạn hiểu SDK Lutech đang tự động hoá những gì. Những thứ SDK đó **có thêm** chủ yếu phục vụ vận hành ở quy mô lớn: Remote Config, nhiều ID dự phòng, Premium, Adjust.
+| Cải tiến | Vì sao | Gắn vào đâu trong code |
+|---|---|---|
+| **Remote Config** (Firebase) cho bật/tắt và tần suất | Chỉnh `showEvery`, cooldown, tắt một định dạng mà **không cần ra bản mới** | Truyền giá trị vào constructor của `InterstitialPolicy` / `AppOpenPolicy` thay vì hằng số |
+| **Tắt ads cho người dùng trả phí** | Gói Premium / IAP | Một cờ `isPremium` trong `AdsManager`: `canShowAds = isReady && !isPremium` |
+| **Nhiều ad unit dự phòng** (waterfall theo giá) | Unit giá cao không có ad thì thử unit giá thấp hơn, tăng fill rate | Thay `AdUnits.xxx: String` bằng `List<String>`, manager thử lần lượt khi `onAdFailedToLoad` |
+| **Mediation** (AppLovin, Meta...) | Nhiều mạng quảng cáo cạnh tranh, tăng eCPM | Cấu hình trên AdMob + thêm adapter trong Gradle, code gần như không đổi |
+| **Đo doanh thu** (`OnPaidEventListener`, Firebase Analytics / Adjust) | Biết định dạng nào, vị trí nào ra tiền | Gắn listener trong từng manager khi ad load xong |
+| **Màn "Loading ad" / "Welcome back"** | Che khoảng chớp màn trước khi ad toàn màn hiện | Một overlay trong `AdsProvider`, bật tắt theo `FullScreenAdTracker` |
+
+Nhờ đã tách **policy** (quy tắc) khỏi **manager** (gọi SDK) và có một **facade** `AdsManager`, phần lớn cải tiến trên chỉ đụng 1–2 file, UI không phải sửa.
 
 ---
 
@@ -211,4 +216,146 @@ adb shell pm clear io.github.darkvard.news    # reset consent + về lần chạ
 - [ ] Play Console: khai báo **"Contains ads"**, điền **Data safety** (Advertising ID, dữ liệu do SDK ads thu thập), có **Privacy policy**.
 - [ ] `applicationId` không bắt đầu bằng `com.example`.
 - [ ] Xem lại tần suất ads toàn màn trên máy thật: nếu thấy phiền thì người dùng cũng thấy phiền.
-- [ ] (Tuỳ chọn) Mediation để tăng fill rate và eCPM; Remote Config để chỉnh tần suất không cần ra bản mới.
+- [ ] (Tuỳ chọn) Các cải tiến ở mục 7.
+
+---
+
+## 9. Tự setup từ đầu, từng bước
+
+Thứ tự dưới đây đi **từ dễ đến khó**, và mỗi bước đều chạy thử được ngay. Đừng viết hết rồi mới chạy: ads lỗi thường lỗi **im lặng** (không crash, chỉ không hiện), nên càng kiểm tra sớm càng dễ tìm nguyên nhân.
+
+| Bước | Làm gì | File | Xong khi |
+|---|---|---|---|
+| 0 | Chuẩn bị | `build.gradle.kts` | `applicationId` không phải `com.example.*` |
+| 1 | Thêm thư viện | `libs.versions.toml`, `build.gradle.kts` | Build được |
+| 2 | Cấu hình ID | `build.gradle.kts`, `AndroidManifest.xml`, `AdUnits.kt` | App mở không crash |
+| 3 | Consent + init SDK | `ConsentManager`, `AdsInitializer` | Thấy form consent, log `Mobile Ads initialized` |
+| 4 | Facade + nối vào app | `AdsManager`, `AdsProvider`, `MainActivity` | Splash chờ consent rồi mới vào app |
+| 5 | Banner | `BannerAd.kt` | Thấy banner "Test Ad" |
+| 6 | Interstitial | `InterstitialPolicy`, `FullScreenAdTracker`, `InterstitialAdManager` | Mở bài thứ 3 thì hiện |
+| 7 | App Open | `AppOpenPolicy`, `AppOpenAdManager`, `NewsApplication` | Ra home rồi vào lại thì hiện |
+| 8 | Native | `native_ad_card.xml`, `NativeAdCard`, `FeedNativeAdsViewModel`, `NativeAdPlacement` | Thấy card ad trong feed, validator báo không lỗi |
+| 9 | Unit test các policy | `src/test/.../ads/` | `./gradlew testDebugUnitTest` pass |
+
+### Bước 0: chuẩn bị
+- `applicationId` **không** được bắt đầu bằng `com.example` (xem mục 5). Mất cả buổi debug NO_FILL nếu quên.
+- Đã có Hilt (các class ads đều là `@Singleton @Inject constructor`).
+- Đọc trước trang test ads của Google: https://developers.google.com/admob/android/test-ads
+
+### Bước 1: thư viện
+```toml
+# libs.versions.toml
+playServicesAds = "25.5.0"
+ump = "4.0.0"
+play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
+user-messaging-platform = { group = "com.google.android.ump", name = "user-messaging-platform", version.ref = "ump" }
+androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleRuntimeKtx" }
+```
+```kotlin
+// app/build.gradle.kts
+implementation(libs.play.services.ads)
+implementation(libs.user.messaging.platform)
+implementation(libs.androidx.lifecycle.process)   // ProcessLifecycleOwner, cho App Open
+```
+Kiểm tra version mới nhất trên Maven Central trước khi dùng.
+
+### Bước 2: ID theo build type
+Ý tưởng: **code không bao giờ chứa ID cứng**. Gradle chọn ID theo build type rồi đưa vào `BuildConfig` (ad unit) và manifest (App ID).
+```kotlin
+object AdMobTestIds {            // ID mẫu của Google, đầu file build.gradle.kts
+    const val APP_ID = "ca-app-pub-3940256099942544~3347511713"
+    const val BANNER = "ca-app-pub-3940256099942544/9214589741"
+    // APP_OPEN, INTERSTITIAL, NATIVE: xem file
+}
+android {
+    buildFeatures { buildConfig = true }
+    buildTypes {
+        debug {
+            manifestPlaceholders["admobAppId"] = AdMobTestIds.APP_ID
+            buildConfigField("String", "ADMOB_BANNER_ID", "\"${AdMobTestIds.BANNER}\"")
+        }
+        release {
+            manifestPlaceholders["admobAppId"] = localProperties.getProperty("ADMOB_APP_ID", AdMobTestIds.APP_ID)
+            buildConfigField("String", "ADMOB_BANNER_ID", "\"${localProperties.getProperty("ADMOB_BANNER_ID", "")}\"")
+        }
+    }
+}
+```
+```xml
+<!-- AndroidManifest.xml, trong <application> -->
+<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${admobAppId}" />
+```
+Rồi tạo `AdUnits` là nơi **duy nhất** đọc các ID đó (`val banner = BuildConfig.ADMOB_BANNER_ID`). ID rỗng nghĩa là tắt định dạng đó: mọi manager đều `if (AdUnits.xxx.isBlank()) return`.
+
+**Kiểm tra**: chạy app, không crash. Thiếu App ID thì crash ngay lúc mở app, log ghi rõ.
+
+### Bước 3: consent rồi mới init
+Quy tắc vàng: **consent → init → load**. Không đảo thứ tự.
+- `ConsentManager.gatherConsent(activity): Boolean`: bọc 2 callback của UMP thành **một hàm suspend** bằng `suspendCancellableCoroutine`. Đây là pattern bạn sẽ dùng lại nhiều lần, cho bất kỳ API callback nào:
+  ```kotlin
+  suspend fun gatherConsent(activity: Activity): Boolean = suspendCancellableCoroutine { cont ->
+      fun finish() { if (cont.isActive) cont.resume(consentInformation.canRequestAds()) }
+      consentInformation.requestConsentInfoUpdate(activity, params,
+          { UserMessagingPlatform.loadAndShowConsentFormIfRequired(activity) { finish() } },
+          { finish() })   // lỗi mạng: dùng lựa chọn đã lưu, không chặn app
+  }
+  ```
+- `AdsInitializer`: `MobileAds.initialize` trên `Dispatchers.IO`, chỉ chạy 1 lần (`AtomicBoolean`), báo xong qua `isReady: StateFlow<Boolean>`. **Mọi định dạng ads đều chờ `isReady`** trước khi load.
+- Debug: giả lập EEA bằng `ConsentDebugSettings` (`DEBUG_GEOGRAPHY_EEA` + `setForceTesting(true)`) để thấy form ngay ở Việt Nam.
+
+**Kiểm tra**: `adb shell pm clear <package>`, mở app thì thấy form; `adb logcat | grep NewsAds` thấy `Mobile Ads initialized`.
+
+### Bước 4: facade và nối vào app
+- `AdsManager` (`@Singleton`) là **cửa duy nhất**. UI không biết tới các manager bên trong. Bắt đầu chỉ với `startOnLaunch` (consent → init) và `canShowAds`; các bước sau thêm dần hàm vào đây.
+- `AdsProvider` + `LocalAdsManager` (`staticCompositionLocalOf`) để Route lấy `AdsManager` mà không phải truyền qua từng màn.
+- `MainActivity`:
+  ```kotlin
+  installSplashScreen().setKeepOnScreenCondition { !isAdsStartupDone }   // giữ splash
+  lifecycleScope.launch {
+      adsManager.startOnLaunch(this@MainActivity, isUserOnboarded, showAppOpenAd = savedInstanceState == null)
+      isAdsStartupDone = true
+  }
+  setContent { NewsTheme { AdsProvider(adsManager) { NavGraph(...) } } }
+  ```
+- Bọc `startOnLaunch` bằng `Mutex` ngay từ đầu (xem mục 3). Test: xoay màn lúc form consent đang mở, sau đó ads vẫn phải chạy.
+
+### Bước 5: banner, định dạng dễ nhất
+Làm banner trước vì nó **chứng minh toàn bộ pipeline** (ID, consent, init) chạy đúng với ít code nhất.
+- `AdView` là một Android View, nên bọc bằng `AndroidView`. Ba thứ cần có: `remember` để tạo AdView một lần và gọi `loadAd`; `LifecycleResumeEffect` để `resume()`/`pause()`; `DisposableEffect` để `destroy()`.
+- Chỉ vẽ khi `onAdLoaded` đã chạy, để không có khoảng trống khi không có ad.
+- Route quyết định có hiện hay không: `bottomBanner = { if (canShowAds) BannerAd() }`. Screen chỉ nhận slot, nên preview vẫn chạy.
+
+### Bước 6: interstitial
+1. Viết `InterstitialPolicy` **trước**, bằng Kotlin thuần, kèm unit test (bước 9). Đây là phần logic dễ sai nhất ("lần thứ mấy thì hiện", "cách nhau bao lâu"), nên test nó tách khỏi SDK.
+2. `FullScreenAdTracker`: trạng thái chung `isShowing`, `lastDismissedAtMillis` để 2 loại ad toàn màn không chồng lên nhau.
+3. `InterstitialAdManager`: vòng đời **preload → show → dismissed → preload tiếp**. Ba điều phải nhớ:
+   - một object ad chỉ show được 1 lần, nên gán `interstitialAd = null` trước khi `show`;
+   - chưa có ad thì bỏ qua, **không bao giờ bắt người dùng chờ**;
+   - gọi sau khi `navigate(...)`, để đóng ad là thấy bài báo ngay.
+
+### Bước 7: App Open, phần khó nhất
+Khó vì có **2 lối vào** và nhiều trường hợp không được hiện.
+- Cold start: `showOnColdStart(activity, timeout)` chạy trong lúc splash; dùng `withTimeoutOrNull` để mạng chậm thì bỏ qua.
+- Quay lại app: `ProcessLifecycleOwner.get().lifecycle.addObserver(this)` → `onStart`. Đăng ký trong `Application.onCreate` (`NewsApplication`), không phải trong Activity.
+- Cần Activity để show: theo dõi bằng `ActivityLifecycleCallbacks`, **bỏ qua `AdActivity`** của SDK.
+- Các trường hợp không hiện nằm trong `AppOpenPolicy`: chưa onboarding, đang có ad khác, vừa share/mở browser (`skipNextAppOpen()`), vừa đóng ad. Ad hết hạn sau 4 giờ.
+- Nhớ **preload sau khi khởi động xong**, nếu không thì lần quay lại đầu tiên không có ad (bài học ở mục 3).
+
+**Kiểm tra**: mở app → bấm Home → mở lại app thì thấy App Open. Share bài → quay lại thì **không** thấy.
+
+### Bước 8: native
+1. Layout XML với gốc là `NativeAdView`; có nhãn "Ad", `MediaView` ≥ 120dp, icon, headline, body, CTA.
+2. `NativeAdCard`: `AndroidView` inflate layout, gán nội dung, **đăng ký từng view** (`headlineView = ...`), và gọi `setNativeAd(ad)` **cuối cùng**. Màu lấy từ `MaterialTheme` để theo light/dark.
+3. `FeedNativeAdsViewModel`: load bằng `AdLoader`, cache theo slot, `destroy()` tất cả trong `onCleared`. Nếu ad về sau khi màn đã đóng thì destroy ngay.
+4. `NativeAdPlacement`: hàm thuần cho biết sau index nào thì chèn ad; màn feed nối vào list qua `ListInsert`.
+
+**Kiểm tra**: bật `NATIVE_AD_DEBUGGER_ENABLED=true` (hoặc bỏ meta-data đó đi), validator phải báo *"No implementation issues found"*. Xong rồi tắt lại.
+
+### Bước 9: test
+- Policy nhận `Clock` qua constructor, nên test dùng `FakeClock` và "tua" thời gian thay vì chờ thật. Xem `InterstitialPolicyTest`.
+- Code gọi SDK thì kiểm tra trên emulator theo kịch bản ở mục 6.
+
+### Mang sang dự án khác
+- **Copy được gần như nguyên**: `policy/`, `FullScreenAdTracker`, `AdsInitializer`, `ConsentManager`, `BannerAd`, khung của các manager.
+- **Phải sửa theo app**: điểm gọi interstitial (ở đây là mở bài báo), vị trí native (`ListInsert`/feed), layout `native_ad_card.xml`, điều kiện "đã onboarding".
+- Muốn nâng cấp tiếp: xem mục 7 (hướng cải tiến).

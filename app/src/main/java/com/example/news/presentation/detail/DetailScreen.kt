@@ -315,7 +315,8 @@ private fun DetailScreenPreview() {
                 isBookmarked = true
             ),
             onIntent = {},
-            navigateUp = {}
+            navigateUp = {},
+            bottomBanner = { BannerAd(isCompact = rememberWindowLayout().isCompactHeight) }
         )
     }
 }

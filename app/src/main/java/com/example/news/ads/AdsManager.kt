@@ -14,7 +14,7 @@ import javax.inject.Singleton
 
 /**
  * Facade the rest of the app talks to (via [LocalAdsManager]); the individual managers stay
- * internal details. Same idea as `AdsManager` in the company's Lutech SDK.
+ * internal details.
  */
 @Singleton
 class AdsManager @Inject constructor(
