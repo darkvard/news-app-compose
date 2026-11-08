@@ -47,7 +47,7 @@ fun SelectionTopBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(ScreenHeaderDefaults.Height)
+            .height(ScreenHeaderDefaults.height())
             .padding(start = Spacing.ExtraSmall, end = Spacing.Large),
         verticalAlignment = Alignment.CenterVertically
     ) {

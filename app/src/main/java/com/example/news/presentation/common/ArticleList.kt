@@ -2,20 +2,22 @@ package com.example.news.presentation.common
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -32,6 +34,9 @@ import com.example.news.ui.theme.Spacing
 
 private object ArticleListDefaults {
     val ItemSpacing = 4.dp
+
+    /** Adaptive grid: as many columns of at least this width as fit (phone portrait = 1, landscape = 2). */
+    val MinColumnWidth = 340.dp
     val ProgressSize = 24.dp
     val ProgressStrokeWidth = 2.dp
 
@@ -40,7 +45,19 @@ private object ArticleListDefaults {
 
     const val ARTICLE_CONTENT_TYPE = "article"
     const val FOOTER_CONTENT_TYPE = "footer"
+    const val INSERT_CONTENT_TYPE = "insert"
 }
+
+/**
+ * A full-width block inserted after some items of a list (e.g. native ads in the feed), so the
+ * list and the paging data know nothing about what is inserted.
+ * Create it inside `remember` so the list can skip recomposition.
+ */
+@Stable
+class ListInsert(
+    val isAfter: (index: Int) -> Boolean,
+    val content: @Composable (index: Int) -> Unit
+)
 
 /**
  * Paged article list that renders every paging state:
@@ -53,8 +70,8 @@ private object ArticleListDefaults {
  * [bottomPadding] is the space taken by the floating bottom bar: the list scrolls *under* the bar
  * (so it can be blurred) but its last item can still scroll above it.
  *
- * [afterItem] is drawn right below each item (used to insert native ads in the feed without
- * the list or the paging data knowing anything about ads).
+ * [insert] adds full-width blocks between items (native ads). In a multi-column grid they take a
+ * whole row instead of stretching one cell.
  */
 @Composable
 fun PagingArticleList(
@@ -64,7 +81,7 @@ fun PagingArticleList(
     modifier: Modifier = Modifier,
     endOfListMessage: String? = null,
     bottomPadding: Dp = 0.dp,
-    afterItem: @Composable (index: Int) -> Unit = {}
+    insert: ListInsert? = null
 ) {
     val loadState = articles.loadState
     val refresh = loadState.refresh
@@ -84,20 +101,21 @@ fun PagingArticleList(
         return
     }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(ArticleListDefaults.ItemSpacing),
-        contentPadding = listContentPadding(bottomPadding)
-    ) {
-        items(
-            count = articles.itemCount,
-            key = articles.itemKey { it.url },
-            contentType = articles.itemContentType { ArticleListDefaults.ARTICLE_CONTENT_TYPE }
-        ) { index ->
-            articles[index]?.let { article ->
-                Column {
+    val itemKey = articles.itemKey { it.url }
+    val itemContentType = articles.itemContentType { ArticleListDefaults.ARTICLE_CONTENT_TYPE }
+
+    ArticleGrid(modifier = modifier, bottomPadding = bottomPadding) {
+        // One `item` per index (instead of `items(count)`) so inserts can be placed between them
+        for (index in 0 until articles.itemCount) {
+            item(key = itemKey(index), contentType = itemContentType(index)) {
+                // Reading `articles[index]` here (lazily) is what triggers loading the next page
+                articles[index]?.let { article ->
                     ArticleCard(article = article, onClick = { onClick(article) })
-                    afterItem(index)
+                }
+            }
+            if (insert != null && insert.isAfter(index)) {
+                fullWidthItem(key = "insert_$index", contentType = ArticleListDefaults.INSERT_CONTENT_TYPE) {
+                    insert.content(index)
                 }
             }
         }
@@ -119,11 +137,7 @@ fun ArticleList(
     onLongClick: ((Article) -> Unit)? = null,
     isSelected: (Article) -> Boolean = { false }
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(ArticleListDefaults.ItemSpacing),
-        contentPadding = listContentPadding(bottomPadding)
-    ) {
+    ArticleGrid(modifier = modifier, bottomPadding = bottomPadding) {
         items(
             items = articles,
             key = { it.url },
@@ -140,6 +154,27 @@ fun ArticleList(
     }
 }
 
+/** One column on phones in portrait, more when there is room (landscape, tablets). */
+@Composable
+private fun ArticleGrid(
+    modifier: Modifier,
+    bottomPadding: Dp,
+    content: LazyGridScope.() -> Unit
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(ArticleListDefaults.MinColumnWidth),
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(ArticleListDefaults.ItemSpacing),
+        horizontalArrangement = Arrangement.spacedBy(ArticleListDefaults.ItemSpacing),
+        contentPadding = listContentPadding(bottomPadding),
+        content = content
+    )
+}
+
+private fun LazyGridScope.fullWidthItem(key: Any, contentType: Any, content: @Composable () -> Unit) {
+    item(key = key, contentType = contentType, span = { GridItemSpan(maxLineSpan) }) { content() }
+}
+
 private fun listContentPadding(bottomPadding: Dp) = PaddingValues(
     start = ArticleListDefaults.HorizontalPadding,
     end = ArticleListDefaults.HorizontalPadding,
@@ -147,7 +182,7 @@ private fun listContentPadding(bottomPadding: Dp) = PaddingValues(
     bottom = bottomPadding + Spacing.Large
 )
 
-private fun LazyListScope.appendStateFooter(
+private fun LazyGridScope.appendStateFooter(
     append: LoadState,
     endOfListMessage: String?,
     onRetry: () -> Unit
@@ -182,8 +217,8 @@ private fun LazyListScope.appendStateFooter(
     }
 }
 
-private fun LazyListScope.footer(key: String, content: @Composable () -> Unit) {
-    item(key = key, contentType = ArticleListDefaults.FOOTER_CONTENT_TYPE) {
+private fun LazyGridScope.footer(key: String, content: @Composable () -> Unit) {
+    fullWidthItem(key = key, contentType = ArticleListDefaults.FOOTER_CONTENT_TYPE) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()

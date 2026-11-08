@@ -35,6 +35,7 @@ import com.example.news.presentation.common.ArticleList
 import com.example.news.presentation.common.EmptyState
 import com.example.news.presentation.common.ObserveAsEvents
 import com.example.news.presentation.common.ScreenHeader
+import com.example.news.ui.adaptive.LANDSCAPE_PHONE_PREVIEW
 import com.example.news.ui.theme.NewsTheme
 import kotlinx.coroutines.launch
 
@@ -178,6 +179,7 @@ private fun BookmarkScreenPreview(state: BookmarkState) {
 
 @Composable
 @Preview(name = "light", showBackground = true)
+@Preview(name = "landscape", device = LANDSCAPE_PHONE_PREVIEW, showBackground = true)
 @Preview(name = "dark", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 private fun BookmarkListPreview() =
     BookmarkScreenPreview(BookmarkState(articles = previewArticles, isLoading = false))

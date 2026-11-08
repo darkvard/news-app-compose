@@ -73,11 +73,12 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- MediaView shows the main image or video; AdMob requires at least 120x120dp -->
+        <!-- MediaView shows the main image or video; AdMob requires at least 120x120dp.
+             Height comes from values/ vs values-h480dp/ (shorter in landscape). -->
         <com.google.android.gms.ads.nativead.MediaView
             android:id="@+id/ad_media"
             android:layout_width="match_parent"
-            android:layout_height="180dp"
+            android:layout_height="@dimen/native_ad_media_height"
             android:layout_marginTop="12dp" />
 
         <TextView

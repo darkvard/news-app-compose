@@ -4,6 +4,20 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import com.example.news.ads.LocalAdsManager
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.navigation.NavHostController
+import com.example.news.presentation.navigator.components.FloatingNavDefaults
+import com.example.news.presentation.navigator.components.NewsNavigationRail
+import com.example.news.ui.adaptive.rememberWindowLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -19,6 +33,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -50,6 +67,9 @@ import dev.chrisbanes.haze.rememberHazeState
 private object NavigatorDefaults {
     val BarHorizontalMargin = 24.dp
 
+    /** Gap between the rail and the left edge (or the camera cutout) and the content. */
+    val RailMargin = 12.dp
+
     /** The bar overlaps this much of the (mostly empty) gesture-handle inset... */
     val NavBarInsetOverlap = 4.dp
 
@@ -57,7 +77,11 @@ private object NavigatorDefaults {
     val MinBottomMargin = 8.dp
 }
 
-/** Hosts the bottom bar and the tab destinations. Each destination is a `XxxRoute`. */
+/**
+ * Hosts the tab navigation and the destinations. Each destination is a `XxxRoute`.
+ * The tabs sit in a floating bottom bar, or in a vertical rail on the left when the window is
+ * short (phone in landscape) or wide (tablet): see [rememberWindowLayout].
+ */
 @Composable
 fun NewsNavigator(
     viewModel: NavigatorViewModel = hiltViewModel()
@@ -71,6 +95,7 @@ fun NewsNavigator(
     val selectedItem = items.indexOfFirst { item ->
         currentDestination?.hierarchy?.any { it.hasRoute(item.destination::class) } == true
     }
+    val onTabClick: (Int) -> Unit = { index -> navController.navigateToTab(items[index].destination) }
     val ads = LocalAdsManager.current
     val activity = LocalActivity.current
     // Navigate first, then (maybe) show an interstitial on top: when it closes, the article is there
@@ -79,47 +104,132 @@ fun NewsNavigator(
         activity?.let(ads::onArticleOpened)
     }
 
-    // Content behind the floating bar is the haze "source"; the bar blurs it
+    // Content behind the floating bar/rail is the haze "source"; the bar blurs it
     val hazeState = rememberHazeState()
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        contentWindowInsets = WindowInsets(0),
-        bottomBar = {
-            FloatingBottomBar(
-                isOnline = state.isOnline,
-                isTabSelected = selectedItem != -1,
-                selectedItem = selectedItem,
+    if (rememberWindowLayout().useNavigationRail) {
+        val layoutDirection = LocalLayoutDirection.current
+        val safeArea = WindowInsets.safeDrawing.asPaddingValues()
+        val railStart = safeArea.calculateStartPadding(layoutDirection) + NavigatorDefaults.RailMargin
+        // Space taken at the bottom by the offline banner (0 when online), so it never covers
+        // content such as the "Retry" button. (The bottom-bar layout gets this from Scaffold.)
+        val density = LocalDensity.current
+        val bannerMargin = bottomBarBottomMargin()
+        var offlineBannerSpace by remember { mutableStateOf(0.dp) }
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            NewsNavHost(
+                navController = navController,
                 hazeState = hazeState,
-                onItemClick = { index -> navController.navigateToTab(items[index].destination) }
+                navigateToDetails = navigateToDetails,
+                tabContentPadding = PaddingValues(
+                    start = railStart + FloatingNavDefaults.Thickness,
+                    end = safeArea.calculateEndPadding(layoutDirection),
+                    bottom = maxOf(safeArea.calculateBottomPadding(), offlineBannerSpace)
+                )
+            )
+            AnimatedVisibility(
+                visible = selectedItem != -1,
+                enter = slideInHorizontally { -it } + fadeIn(),
+                exit = slideOutHorizontally { -it } + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = railStart)
+            ) {
+                NewsNavigationRail(
+                    items = items,
+                    selectedItem = selectedItem,
+                    onItemClick = onTabClick,
+                    hazeState = hazeState
+                )
+            }
+            AnimatedVisibility(
+                visible = !state.isOnline,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = bannerMargin)
+                    .onSizeChanged { size ->
+                        offlineBannerSpace = if (size.height == 0) {
+                            0.dp
+                        } else {
+                            with(density) { size.height.toDp() } + bannerMargin + Spacing.Small
+                        }
+                    }
+            ) {
+                OfflineBanner()
+            }
+        }
+    } else {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            contentWindowInsets = WindowInsets(0),
+            bottomBar = {
+                FloatingBottomBar(
+                    isOnline = state.isOnline,
+                    isTabSelected = selectedItem != -1,
+                    selectedItem = selectedItem,
+                    hazeState = hazeState,
+                    onItemClick = onTabClick
+                )
+            }
+        ) { innerPadding ->
+            NewsNavHost(
+                navController = navController,
+                hazeState = hazeState,
+                navigateToDetails = navigateToDetails,
+                tabContentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding())
             )
         }
-    ) { innerPadding ->
-        // No padding on the NavHost: content scrolls under the floating bar (and gets blurred);
-        // lists add `bottomPadding` so their last item can still scroll above it.
-        val bottomPadding = innerPadding.calculateBottomPadding()
+    }
+}
 
-        NavHost(
-            navController = navController,
-            startDestination = Destination.Home,
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(hazeState)
-        ) {
-            composable<Destination.Home> {
+/**
+ * The destinations. No padding on the NavHost itself: content scrolls under the floating bar
+ * (and gets blurred). Tabs get [tabContentPadding] instead: start/end keep them clear of the rail
+ * and the screen cutouts, bottom lets the last list item scroll above the bar.
+ */
+@Composable
+private fun NewsNavHost(
+    navController: NavHostController,
+    hazeState: HazeState,
+    navigateToDetails: (Article) -> Unit,
+    tabContentPadding: PaddingValues
+) {
+    val layoutDirection = LocalLayoutDirection.current
+    val bottomPadding = tabContentPadding.calculateBottomPadding()
+    val tabModifier = Modifier.padding(
+        start = tabContentPadding.calculateStartPadding(layoutDirection),
+        end = tabContentPadding.calculateEndPadding(layoutDirection)
+    )
+
+    NavHost(
+        navController = navController,
+        startDestination = Destination.Home,
+        modifier = Modifier
+            .fillMaxSize()
+            .hazeSource(hazeState)
+    ) {
+        composable<Destination.Home> {
+            Box(tabModifier) {
                 HomeRoute(bottomPadding = bottomPadding, navigateToDetails = navigateToDetails)
             }
-            composable<Destination.Search> {
-                BackToHomeHandler(navController)
+        }
+        composable<Destination.Search> {
+            BackToHomeHandler(navController)
+            Box(tabModifier) {
                 SearchRoute(bottomPadding = bottomPadding, navigateToDetails = navigateToDetails)
             }
-            composable<Destination.Bookmark> {
-                BackToHomeHandler(navController)
+        }
+        composable<Destination.Bookmark> {
+            BackToHomeHandler(navController)
+            Box(tabModifier) {
                 BookmarkRoute(bottomPadding = bottomPadding, navigateToDetails = navigateToDetails)
             }
-            composable<Destination.Details>(typeMap = Destination.Details.typeMap) {
-                DetailRoute(navigateUp = { navController.navigateUp() })
-            }
+        }
+        composable<Destination.Details>(typeMap = Destination.Details.typeMap) {
+            DetailRoute(navigateUp = { navController.navigateUp() })
         }
     }
 }

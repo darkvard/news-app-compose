@@ -1,6 +1,7 @@
 package com.example.news.presentation.onboarding
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,7 +26,10 @@ import com.example.news.R
 import com.example.news.presentation.common.NewsButton
 import com.example.news.presentation.common.NewsTextButton
 import com.example.news.presentation.onboarding.components.OnBoardingPage
+import com.example.news.presentation.onboarding.components.OnBoardingPageDefaults
+import com.example.news.ui.adaptive.rememberWindowLayout
 import com.example.news.presentation.onboarding.components.PageIndicator
+import com.example.news.ui.adaptive.LANDSCAPE_PHONE_PREVIEW
 import com.example.news.ui.theme.NewsTheme
 import com.example.news.ui.theme.Spacing
 import kotlinx.coroutines.launch
@@ -49,26 +53,45 @@ fun OnboardingScreen(
 ) {
     val pagerState = rememberPagerState(initialPage = 0) { state.pages.size }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        HorizontalPager(state = pagerState) { index ->
-            OnBoardingPage(page = state.pages[index])
+    val onFinish = { onIntent(OnboardingIntent.Finish) }
+
+    if (rememberWindowLayout().isCompactHeight) {
+        // Two panes: controls sit under the text, in the right pane
+        Box(modifier = Modifier.fillMaxSize()) {
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { index ->
+                OnBoardingPage(page = state.pages[index])
+            }
+            OnboardingControls(
+                pagerState = pagerState,
+                onFinish = onFinish,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .fillMaxWidth(1f - OnBoardingPageDefaults.ImageWidthFraction)
+            )
         }
-        Spacer(modifier = Modifier.weight(1f))
-        OnboardingControls(
-            pagerState = pagerState,
-            onFinish = { onIntent(OnboardingIntent.Finish) }
-        )
+    } else {
+        Column(modifier = Modifier.fillMaxSize()) {
+            HorizontalPager(state = pagerState) { index ->
+                OnBoardingPage(page = state.pages[index])
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            OnboardingControls(pagerState = pagerState, onFinish = onFinish)
+        }
     }
 }
 
 @Composable
-private fun OnboardingControls(pagerState: PagerState, onFinish: () -> Unit) {
+private fun OnboardingControls(
+    pagerState: PagerState,
+    onFinish: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val scope = rememberCoroutineScope()
     val isFirstPage = pagerState.currentPage == 0
     val isLastPage = pagerState.currentPage == pagerState.pageCount - 1
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = OnboardingDefaults.ControlsHorizontalPadding, vertical = Spacing.Large)
             .navigationBarsPadding(),
@@ -98,6 +121,7 @@ private fun OnboardingControls(pagerState: PagerState, onFinish: () -> Unit) {
 
 @Composable
 @Preview(showBackground = true)
+@Preview(name = "landscape", device = LANDSCAPE_PHONE_PREVIEW, showBackground = true)
 private fun OnboardingScreenPreview() {
     NewsTheme { OnboardingScreen(state = OnboardingState(), onIntent = {}) }
 }

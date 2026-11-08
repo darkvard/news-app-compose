@@ -42,9 +42,11 @@ import com.example.news.R
 import com.example.news.domain.model.Article
 import com.example.news.domain.model.Source
 import com.example.news.presentation.common.EmptyState
+import com.example.news.presentation.common.ListInsert
 import com.example.news.presentation.common.PagingArticleList
 import com.example.news.presentation.common.RetryWhenBackOnline
 import com.example.news.presentation.common.ScreenHeader
+import com.example.news.ui.adaptive.LANDSCAPE_PHONE_PREVIEW
 import com.example.news.ui.theme.NewsTheme
 import kotlinx.coroutines.flow.flowOf
 
@@ -60,7 +62,12 @@ fun HomeRoute(
     val ads = LocalAdsManager.current
     val activity = LocalActivity.current
     val isPrivacyOptionsRequired by ads.isPrivacyOptionsRequired.collectAsStateWithLifecycle()
-    val adPlacement = remember { NativeAdPlacement() }
+    val nativeAds = remember(nativeAdsViewModel) {
+        val placement = NativeAdPlacement()
+        ListInsert(isAfter = placement::isAdAfter) { index ->
+            FeedNativeAd(index = index, placement = placement, viewModel = nativeAdsViewModel)
+        }
+    }
 
     HomeScreen(
         state = state,
@@ -72,9 +79,7 @@ fun HomeRoute(
         } else {
             null
         },
-        afterArticle = { index ->
-            FeedNativeAd(index = index, placement = adPlacement, viewModel = nativeAdsViewModel)
-        }
+        nativeAds = nativeAds
     )
 }
 
@@ -86,7 +91,7 @@ fun HomeScreen(
     bottomPadding: Dp,
     navigateToDetails: (Article) -> Unit,
     onPrivacyOptionsClick: (() -> Unit)? = null,
-    afterArticle: @Composable (index: Int) -> Unit = {}
+    nativeAds: ListInsert? = null
 ) {
     RetryWhenBackOnline(articles = articles, isOnline = state.isOnline)
 
@@ -119,7 +124,7 @@ fun HomeScreen(
                     onClick = navigateToDetails,
                     bottomPadding = bottomPadding,
                     endOfListMessage = stringResource(R.string.home_end_of_list),
-                    afterItem = afterArticle,
+                    insert = nativeAds,
                     emptyContent = {
                         EmptyState(
                             icon = R.drawable.ic_search_document,
@@ -170,6 +175,7 @@ private fun CachedDataRefreshErrorSnackbar(articles: LazyPagingItems<Article>, b
 
 @Composable
 @Preview(name = "light", showBackground = true)
+@Preview(name = "landscape", device = LANDSCAPE_PHONE_PREVIEW, showBackground = true)
 @Preview("dark", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 private fun HomeScreenPreview() {
     val dummyArticles = List(10) { index ->

@@ -26,9 +26,12 @@ import com.google.android.gms.ads.LoadAdError
  * The caller decides *whether* to show it (consent / ads ready); this handles the AdView lifecycle:
  * resume/pause with the screen, destroy when it leaves composition.
  * Nothing is drawn until the banner has loaded, so a missing ad leaves no empty space.
+ *
+ * [isCompact]: short window (phone in landscape) -> the standard anchored size, which is much
+ * shorter than the "large" one used otherwise.
  */
 @Composable
-fun BannerAd(modifier: Modifier = Modifier) {
+fun BannerAd(modifier: Modifier = Modifier, isCompact: Boolean = false) {
     if (AdUnits.banner.isBlank()) return
     val context = LocalContext.current
 
@@ -36,9 +39,15 @@ fun BannerAd(modifier: Modifier = Modifier) {
         val widthDp = maxWidth.value.toInt()
         var isLoaded by remember { mutableStateOf(false) }
 
-        val adView = remember(widthDp) {
+        val adView = remember(widthDp, isCompact) {
             AdView(context).apply {
-                setAdSize(AdSize.getLargeAnchoredAdaptiveBannerAdSize(context, widthDp))
+                setAdSize(
+                    if (isCompact) {
+                        AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, widthDp)
+                    } else {
+                        AdSize.getLargeAnchoredAdaptiveBannerAdSize(context, widthDp)
+                    }
+                )
                 adUnitId = AdUnits.banner
                 adListener = object : AdListener() {
                     override fun onAdLoaded() {

@@ -11,6 +11,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.example.news.ads.ADS_LOG_TAG
 import com.example.news.ads.AdUnits
 import com.example.news.ads.AdsInitializer
+import com.example.news.ads.AdCooldowns
 import com.example.news.ads.policy.AppOpenPolicy
 import com.example.news.ads.policy.Clock
 import com.google.android.gms.ads.AdError
@@ -45,7 +46,7 @@ class AppOpenAdManager @Inject constructor(
 ) : DefaultLifecycleObserver, Application.ActivityLifecycleCallbacks {
 
     private val clock = Clock.System
-    private val policy = AppOpenPolicy(clock)
+    private val policy = AppOpenPolicy(clock, cooldownMillis = AdCooldowns.appOpenAfterFullScreenMillis)
 
     private var appOpenAd: AppOpenAd? = null
     private var loadedAtMillis = 0L

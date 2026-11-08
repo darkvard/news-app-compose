@@ -7,6 +7,7 @@ import com.example.news.ads.ADS_LOG_TAG
 import com.example.news.ads.AdUnits
 import com.example.news.ads.AdsInitializer
 import com.example.news.ads.policy.Clock
+import com.example.news.ads.AdCooldowns
 import com.example.news.ads.policy.InterstitialPolicy
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
@@ -29,7 +30,11 @@ class InterstitialAdManager @Inject constructor(
     private val adsInitializer: AdsInitializer,
     private val tracker: FullScreenAdTracker
 ) {
-    private val policy = InterstitialPolicy(Clock.System)
+    private val policy = InterstitialPolicy(
+        clock = Clock.System,
+        minIntervalMillis = AdCooldowns.interstitialMinIntervalMillis,
+        appOpenCooldownMillis = AdCooldowns.interstitialAfterAppOpenMillis
+    )
     private var interstitialAd: InterstitialAd? = null
     private var isLoading = false
 

@@ -31,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.news.R
 import com.example.news.domain.model.DataError
+import com.example.news.ui.adaptive.rememberWindowLayout
 import com.example.news.ui.theme.NewsTheme
 import com.example.news.ui.theme.Spacing
 
@@ -38,6 +39,9 @@ private object StateViewsDefaults {
     const val ShimmerItemCount = 6
     val ShimmerItemSpacing = 4.dp
     val IconSize = 96.dp
+
+    /** Short windows (phone in landscape): icon + texts + button must fit above the offline banner. */
+    val CompactIconSize = 64.dp
     const val IconAlpha = 0.45f
     val OfflineIconSize = 18.dp
 }
@@ -67,11 +71,13 @@ fun MessageState(
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null
 ) {
+    val isCompact = rememberWindowLayout().isCompactHeight
+    val gap = if (isCompact) Spacing.Medium else Spacing.ExtraLarge
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = Spacing.Huge, vertical = Spacing.ExtraLarge),
+            .padding(horizontal = Spacing.Huge, vertical = gap),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -79,9 +85,9 @@ fun MessageState(
             painter = painterResource(icon),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = StateViewsDefaults.IconAlpha),
-            modifier = Modifier.size(StateViewsDefaults.IconSize)
+            modifier = Modifier.size(if (isCompact) StateViewsDefaults.CompactIconSize else StateViewsDefaults.IconSize)
         )
-        Spacer(modifier = Modifier.height(Spacing.ExtraLarge))
+        Spacer(modifier = Modifier.height(gap))
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
@@ -96,7 +102,7 @@ fun MessageState(
             textAlign = TextAlign.Center
         )
         if (action != null) {
-            Spacer(modifier = Modifier.height(Spacing.ExtraLarge))
+            Spacer(modifier = Modifier.height(gap))
             action()
         }
     }

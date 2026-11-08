@@ -31,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.example.news.R
 import com.example.news.ui.theme.NewsTheme
 import com.example.news.ui.theme.Spacing
@@ -53,8 +54,19 @@ fun DeleteBookmarksDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    BasicAlertDialog(onDismissRequest = onDismiss) {
-        DeleteBookmarksDialogContent(count = count, onConfirm = onConfirm, onDismiss = onDismiss)
+    // Default dialog width is capped by the platform (narrow, almost square on phones):
+    // opt out and go full width with the usual screen margin instead.
+    BasicAlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.padding(horizontal = Spacing.ScreenHorizontal),
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        DeleteBookmarksDialogContent(
+            count = count,
+            onConfirm = onConfirm,
+            onDismiss = onDismiss,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -62,10 +74,12 @@ fun DeleteBookmarksDialog(
 private fun DeleteBookmarksDialogContent(
     count: Int,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
     Surface(
+        modifier = modifier,
         shape = MaterialTheme.shapes.extraLarge,
         color = colors.surfaceContainerLowest,
         tonalElevation = 0.dp,
@@ -92,14 +106,14 @@ private fun DeleteBookmarksDialogContent(
             Spacer(modifier = Modifier.height(Spacing.Large))
             Text(
                 text = pluralStringResource(R.plurals.delete_bookmarks_title, count, count),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = colors.onSurface,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(Spacing.Small))
             Text(
                 text = pluralStringResource(R.plurals.delete_bookmarks_message, count),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )

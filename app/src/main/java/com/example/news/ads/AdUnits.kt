@@ -14,4 +14,15 @@ object AdUnits {
     val native: String = BuildConfig.ADMOB_NATIVE_ID
 }
 
+/**
+ * Time-based frequency caps. Debug sets them to 0 (BuildConfig.ADS_NO_COOLDOWN) so every ad
+ * can be seen right away while learning/recording; release keeps realistic values.
+ */
+object AdCooldowns {
+    private val off = BuildConfig.ADS_NO_COOLDOWN
+    val appOpenAfterFullScreenMillis: Long = if (off) 0 else 30_000
+    val interstitialMinIntervalMillis: Long = if (off) 0 else 60_000
+    val interstitialAfterAppOpenMillis: Long = if (off) 0 else 30_000
+}
+
 internal const val ADS_LOG_TAG = "NewsAds"

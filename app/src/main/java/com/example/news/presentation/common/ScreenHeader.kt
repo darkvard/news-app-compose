@@ -11,14 +11,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.news.ui.adaptive.rememberWindowLayout
 import com.example.news.ui.theme.NewsTheme
 import com.example.news.ui.theme.Spacing
 
 object ScreenHeaderDefaults {
-    /** Public: the bookmark selection bar uses the same height so swapping them doesn't jump. */
-    val Height = 64.dp
+    private val Height = 64.dp
+
+    /** Short windows (phone in landscape) need every dp of height for content. */
+    private val CompactHeight = 52.dp
     val EndPadding = 8.dp
+
+    /** Public: the bookmark selection bar uses the same height so swapping them doesn't jump. */
+    @Composable
+    fun height(): Dp = if (rememberWindowLayout().isCompactHeight) CompactHeight else Height
+
+    @Composable
+    fun titleStyle(): TextStyle =
+        if (rememberWindowLayout().isCompactHeight) MaterialTheme.typography.headlineSmall
+        else MaterialTheme.typography.headlineMedium
 }
 
 /** Title row shared by the three tabs (News / Search / Bookmark) so they look consistent. */
@@ -31,13 +45,13 @@ fun ScreenHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(ScreenHeaderDefaults.Height)
+            .height(ScreenHeaderDefaults.height())
             .padding(start = Spacing.ScreenHorizontal, end = ScreenHeaderDefaults.EndPadding),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineMedium,
+            style = ScreenHeaderDefaults.titleStyle(),
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )

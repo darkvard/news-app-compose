@@ -6,6 +6,8 @@ import com.example.news.ads.fullscreen.AppOpenAdManager
 import com.example.news.ads.fullscreen.InterstitialAdManager
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,7 +23,13 @@ class AdsManager @Inject constructor(
     private val appOpenAdManager: AppOpenAdManager,
     private val interstitialAdManager: InterstitialAdManager
 ) {
-    private var isStarted = false
+    /**
+     * Serializes [startOnLaunch]. If the activity is recreated (e.g. rotated) while the consent
+     * form is open, the old activity's coroutine is cancelled mid-way: the lock is then released
+     * and the new activity runs the sequence again (every step is safe to repeat).
+     */
+    private val startupLock = Mutex()
+    private var isStartupDone = false
 
     /** True once consent allows ads and the SDK is initialized. */
     val canShowAds: StateFlow<Boolean> get() = adsInitializer.isReady
@@ -31,13 +39,18 @@ class AdsManager @Inject constructor(
     /**
      * App launch sequence, run while the splash screen is visible:
      * consent → SDK init → preload → App Open (cold start, with timeout).
-     * Returns when the app content may be shown. Runs once per process.
+     * Returns when the app content may be shown. Completes once per process.
      */
     suspend fun startOnLaunch(activity: Activity, isUserOnboarded: Boolean, showAppOpenAd: Boolean) {
         appOpenAdManager.setUserOnboarded(isUserOnboarded)
-        if (isStarted) return
-        isStarted = true
+        startupLock.withLock {
+            if (isStartupDone) return
+            runStartup(activity, showAppOpenAd)
+            isStartupDone = true
+        }
+    }
 
+    private suspend fun runStartup(activity: Activity, showAppOpenAd: Boolean) {
         // 1. Consent first: nothing may be requested before the user answered (if they must)
         if (!consentManager.gatherConsent(activity)) {
             appOpenAdManager.markColdStartHandled()

@@ -33,8 +33,11 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 
-private object BottomBarDefaults {
-    val Height = 60.dp
+/** Shared by the bottom bar and the navigation rail so both look the same. */
+internal object FloatingNavDefaults {
+    /** Bar height = rail width. */
+    val Thickness = 60.dp
+    val ItemLength = 64.dp
     val InnerPadding = 6.dp
     val IconSize = 26.dp
     val BorderWidth = 1.dp
@@ -47,7 +50,6 @@ private object BottomBarDefaults {
  * Floating, icon-only bottom bar. Its background is a "frosted glass" blur of whatever scrolls
  * behind it: the content must be marked with `Modifier.hazeSource(hazeState)`.
  */
-@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun NewsBottomNavigation(
     items: List<BottomNavigationItem>,
@@ -56,40 +58,51 @@ fun NewsBottomNavigation(
     hazeState: HazeState?,
     modifier: Modifier = Modifier
 ) {
-    val colors = MaterialTheme.colorScheme
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(BottomBarDefaults.Height)
-            .shadow(
-                elevation = BottomBarDefaults.ShadowElevation,
-                shape = CircleShape,
-                ambientColor = colors.primary.copy(alpha = BottomBarDefaults.ShadowAlpha),
-                spotColor = colors.primary.copy(alpha = BottomBarDefaults.ShadowAlpha)
-            )
-            .clip(CircleShape)
-            .hazeEffect(state = hazeState, style = HazeMaterials.thin(colors.surfaceContainerLowest))
-            .border(
-                width = BottomBarDefaults.BorderWidth,
-                color = colors.outlineVariant.copy(alpha = BottomBarDefaults.BorderAlpha),
-                shape = CircleShape
-            )
-            .padding(BottomBarDefaults.InnerPadding),
+            .height(FloatingNavDefaults.Thickness)
+            .floatingNavSurface(hazeState),
         verticalAlignment = Alignment.CenterVertically
     ) {
         items.forEachIndexed { index, item ->
-            BottomBarItem(
+            FloatingNavItem(
                 item = item,
                 selected = index == selectedItem,
                 onClick = { onItemClick(index) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
             )
         }
     }
 }
 
+/** Pill shape with shadow, border and a frosted-glass blur of the content behind it. */
+@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
-private fun BottomBarItem(
+internal fun Modifier.floatingNavSurface(hazeState: HazeState?): Modifier {
+    val colors = MaterialTheme.colorScheme
+    return this
+        .shadow(
+            elevation = FloatingNavDefaults.ShadowElevation,
+            shape = CircleShape,
+            ambientColor = colors.primary.copy(alpha = FloatingNavDefaults.ShadowAlpha),
+            spotColor = colors.primary.copy(alpha = FloatingNavDefaults.ShadowAlpha)
+        )
+        .clip(CircleShape)
+        .hazeEffect(state = hazeState, style = HazeMaterials.thin(colors.surfaceContainerLowest))
+        .border(
+            width = FloatingNavDefaults.BorderWidth,
+            color = colors.outlineVariant.copy(alpha = FloatingNavDefaults.BorderAlpha),
+            shape = CircleShape
+        )
+        .padding(FloatingNavDefaults.InnerPadding)
+}
+
+/** One tab: icon only, with an animated pill indicator when selected. The caller sizes it. */
+@Composable
+internal fun FloatingNavItem(
     item: BottomNavigationItem,
     selected: Boolean,
     onClick: () -> Unit,
@@ -107,7 +120,6 @@ private fun BottomBarItem(
 
     Box(
         modifier = modifier
-            .fillMaxHeight()
             .clip(CircleShape)
             .background(indicatorColor)
             .selectable(selected = selected, onClick = onClick, role = Role.Tab),
@@ -117,7 +129,7 @@ private fun BottomBarItem(
             imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
             contentDescription = stringResource(item.label),
             tint = iconColor,
-            modifier = Modifier.size(BottomBarDefaults.IconSize)
+            modifier = Modifier.size(FloatingNavDefaults.IconSize)
         )
     }
 }

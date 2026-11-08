@@ -1,7 +1,9 @@
 package com.example.news.presentation.search
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -13,6 +15,9 @@ import androidx.compose.runtime.remember
 import com.example.news.ads.nativead.FeedNativeAd
 import com.example.news.ads.nativead.FeedNativeAdsViewModel
 import com.example.news.ads.policy.NativeAdPlacement
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,10 +32,14 @@ import com.example.news.R
 import com.example.news.domain.model.Article
 import com.example.news.domain.model.Source
 import com.example.news.presentation.common.EmptyState
+import com.example.news.presentation.common.ListInsert
 import com.example.news.presentation.common.PagingArticleList
 import com.example.news.presentation.common.RetryWhenBackOnline
 import com.example.news.presentation.common.ScreenHeader
+import com.example.news.presentation.common.ScreenHeaderDefaults
+import com.example.news.ui.adaptive.rememberWindowLayout
 import com.example.news.presentation.common.SearchBar
+import com.example.news.ui.adaptive.LANDSCAPE_PHONE_PREVIEW
 import com.example.news.ui.theme.NewsTheme
 import com.example.news.ui.theme.Spacing
 import kotlinx.coroutines.flow.flowOf
@@ -44,7 +53,12 @@ fun SearchRoute(
     nativeAdsViewModel: FeedNativeAdsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val adPlacement = remember { NativeAdPlacement() }
+    val nativeAds = remember(nativeAdsViewModel) {
+        val placement = NativeAdPlacement()
+        ListInsert(isAfter = placement::isAdAfter) { index ->
+            FeedNativeAd(index = index, placement = placement, viewModel = nativeAdsViewModel)
+        }
+    }
     SearchScreen(
         state = state,
         query = viewModel.query,
@@ -52,9 +66,7 @@ fun SearchRoute(
         bottomPadding = bottomPadding,
         onIntent = viewModel::onIntent,
         navigateToDetails = navigateToDetails,
-        afterArticle = { index ->
-            FeedNativeAd(index = index, placement = adPlacement, viewModel = nativeAdsViewModel)
-        }
+        nativeAds = nativeAds
     )
 }
 
@@ -66,7 +78,7 @@ fun SearchScreen(
     bottomPadding: Dp,
     onIntent: (SearchIntent) -> Unit,
     navigateToDetails: (Article) -> Unit,
-    afterArticle: @Composable (index: Int) -> Unit = {}
+    nativeAds: ListInsert? = null
 ) {
     RetryWhenBackOnline(articles = articles, isOnline = state.isOnline)
 
@@ -75,16 +87,34 @@ fun SearchScreen(
             .fillMaxSize()
             .statusBarsPadding()
     ) {
-        ScreenHeader(title = stringResource(R.string.search))
+        val searchBar: @Composable (Modifier) -> Unit = { modifier ->
+            SearchBar(
+                text = query,
+                onValueChange = { onIntent(SearchIntent.QueryChanged(it)) },
+                onSearch = { onIntent(SearchIntent.Submit) },
+                modifier = modifier
+            )
+        }
 
-        SearchBar(
-            text = query,
-            onValueChange = { onIntent(SearchIntent.QueryChanged(it)) },
-            onSearch = { onIntent(SearchIntent.Submit) },
-            modifier = Modifier.padding(horizontal = Spacing.ScreenHorizontal)
-        )
-
-        Spacer(modifier = Modifier.height(Spacing.Medium))
+        if (rememberWindowLayout().isCompactHeight) {
+            // Short window: title and search bar share one row to leave room for results
+            Row(
+                modifier = Modifier.padding(horizontal = Spacing.ScreenHorizontal, vertical = Spacing.Small),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.ExtraLarge)
+            ) {
+                Text(
+                    text = stringResource(R.string.search),
+                    style = ScreenHeaderDefaults.titleStyle(),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                searchBar(Modifier.weight(1f))
+            }
+        } else {
+            ScreenHeader(title = stringResource(R.string.search))
+            searchBar(Modifier.padding(horizontal = Spacing.ScreenHorizontal))
+            Spacer(modifier = Modifier.height(Spacing.Medium))
+        }
 
         if (state.submittedQuery.isBlank()) {
             EmptyState(
@@ -99,7 +129,7 @@ fun SearchScreen(
                 onClick = navigateToDetails,
                 bottomPadding = bottomPadding,
                 endOfListMessage = stringResource(R.string.search_end_of_list),
-                afterItem = afterArticle,
+                insert = nativeAds,
                 emptyContent = {
                     EmptyState(
                         icon = R.drawable.ic_search_document,
@@ -114,6 +144,7 @@ fun SearchScreen(
 
 @Composable
 @Preview(name = "light", showBackground = true)
+@Preview(name = "landscape", device = LANDSCAPE_PHONE_PREVIEW, showBackground = true)
 @Preview(name = "dark", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 private fun SearchScreenPreview() {
     val dummyArticles = List(10) { index ->

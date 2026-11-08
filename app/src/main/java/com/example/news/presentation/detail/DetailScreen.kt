@@ -7,6 +7,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,12 +56,17 @@ import com.example.news.presentation.common.NewsButton
 import com.example.news.presentation.common.ObserveAsEvents
 import com.example.news.presentation.common.formatPublishedAt
 import com.example.news.presentation.detail.components.DetailTopBar
+import com.example.news.ui.adaptive.rememberWindowLayout
+import com.example.news.ui.adaptive.LANDSCAPE_PHONE_PREVIEW
 import com.example.news.ui.theme.NewsTheme
 import com.example.news.ui.theme.Spacing
 import kotlinx.coroutines.launch
 
 private object DetailDefaults {
     const val ImageAspectRatio = 16f / 9f
+
+    /** Share of the width taken by the image in the two-pane (landscape) layout. */
+    const val ImagePaneWeight = 0.4f
     val ButtonHeight = 52.dp
 }
 
@@ -67,6 +80,7 @@ fun DetailRoute(
     val context = LocalContext.current
     val ads = LocalAdsManager.current
     val canShowAds by ads.canShowAds.collectAsStateWithLifecycle()
+    val isCompactHeight = rememberWindowLayout().isCompactHeight
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -95,7 +109,7 @@ fun DetailRoute(
         onIntent = viewModel::onIntent,
         navigateUp = navigateUp,
         snackbarHostState = snackbarHostState,
-        bottomBanner = { if (canShowAds) BannerAd() }
+        bottomBanner = { if (canShowAds) BannerAd(isCompact = isCompactHeight) }
     )
 }
 
@@ -107,11 +121,15 @@ fun DetailScreen(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomBanner: @Composable () -> Unit = {}
 ) {
+    // Short window (phone in landscape): image on the left, text on the right
+    val twoPane = rememberWindowLayout().isCompactHeight && !state.article.urlToImage.isNullOrBlank()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
+            .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
     ) {
         DetailTopBar(
             isBookmarked = state.isBookmarked,
@@ -127,19 +145,33 @@ fun DetailScreen(
                 .fillMaxWidth()
                 .weight(1f)
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = Spacing.ScreenHorizontal,
-                    end = Spacing.ScreenHorizontal,
-                    top = Spacing.Small,
-                    bottom = Spacing.ExtraLarge
-                )
-            ) {
-                item {
-                    ArticleDetailContent(
+            val onReadFullArticle = { onIntent(DetailIntent.OpenInBrowser) }
+            if (twoPane) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    ArticleImage(
+                        url = state.article.urlToImage,
+                        modifier = Modifier
+                            .weight(DetailDefaults.ImagePaneWeight)
+                            .fillMaxHeight()
+                            .padding(start = Spacing.ScreenHorizontal, top = Spacing.Small, bottom = Spacing.Large)
+                    )
+                    ArticleScrollColumn(modifier = Modifier.weight(1f - DetailDefaults.ImagePaneWeight)) {
+                        ArticleText(article = state.article, onReadFullArticle = onReadFullArticle)
+                    }
+                }
+            } else {
+                ArticleScrollColumn(modifier = Modifier.fillMaxSize()) {
+                    ArticleText(
                         article = state.article,
-                        onReadFullArticle = { onIntent(DetailIntent.OpenInBrowser) }
+                        onReadFullArticle = onReadFullArticle,
+                        image = {
+                            ArticleImage(
+                                url = state.article.urlToImage,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(DetailDefaults.ImageAspectRatio)
+                            )
+                        }
                     )
                 }
             }
@@ -155,8 +187,41 @@ fun DetailScreen(
 }
 
 @Composable
-private fun ArticleDetailContent(article: Article, onReadFullArticle: () -> Unit) {
-    val context = LocalContext.current
+private fun ArticleScrollColumn(modifier: Modifier, content: @Composable () -> Unit) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(
+            start = Spacing.ScreenHorizontal,
+            end = Spacing.ScreenHorizontal,
+            top = Spacing.Small,
+            bottom = Spacing.ExtraLarge
+        )
+    ) {
+        item { content() }
+    }
+}
+
+/** Nothing is drawn when the article has no image. */
+@Composable
+private fun ArticleImage(url: String?, modifier: Modifier = Modifier) {
+    if (url.isNullOrBlank()) return
+    AsyncImage(
+        model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(true).build(),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = modifier
+            .clip(MaterialTheme.shapes.large)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+    )
+}
+
+/** Title, meta line, [image] (single-pane only), body and the "Read full article" button. */
+@Composable
+private fun ArticleText(
+    article: Article,
+    onReadFullArticle: () -> Unit,
+    image: (@Composable () -> Unit)? = null
+) {
     val publishedAt = remember(article.publishedAt) { formatPublishedAt(article.publishedAt) }
     val body = remember(article) { article.readableBody() }
 
@@ -172,18 +237,9 @@ private fun ArticleDetailContent(article: Article, onReadFullArticle: () -> Unit
             author = article.author?.takeIf { it.isNotBlank() },
             publishedAt = publishedAt
         )
-        if (!article.urlToImage.isNullOrBlank()) {
+        if (image != null && !article.urlToImage.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(Spacing.Large))
-            AsyncImage(
-                model = ImageRequest.Builder(context).data(article.urlToImage).crossfade(true).build(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(DetailDefaults.ImageAspectRatio)
-                    .clip(MaterialTheme.shapes.large)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            )
+            image()
         }
         if (body.isNotBlank()) {
             Spacer(modifier = Modifier.height(Spacing.ScreenHorizontal))
@@ -241,6 +297,7 @@ private fun Context.shareUrl(url: String) {
 
 @Composable
 @Preview(name = "light", showBackground = true)
+@Preview(name = "landscape", device = LANDSCAPE_PHONE_PREVIEW, showBackground = true)
 @Preview(name = "dark", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 private fun DetailScreenPreview() {
     NewsTheme {

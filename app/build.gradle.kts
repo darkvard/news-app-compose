@@ -57,6 +57,8 @@ android {
             buildConfigField("String", "ADMOB_NATIVE_ID", "\"${AdMobTestIds.NATIVE}\"")
             // Pretend the device is in the EEA so the GDPR consent form shows while developing
             buildConfigField("boolean", "ADS_DEBUG_CONSENT_EEA", "true")
+            // Learning/demo build: no waiting between full-screen ads (release keeps the real caps)
+            buildConfigField("boolean", "ADS_NO_COOLDOWN", "true")
         }
         release {
             optimization {
@@ -70,6 +72,7 @@ android {
             buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"${localProperties.getProperty("ADMOB_INTERSTITIAL_ID", "")}\"")
             buildConfigField("String", "ADMOB_NATIVE_ID", "\"${localProperties.getProperty("ADMOB_NATIVE_ID", "")}\"")
             buildConfigField("boolean", "ADS_DEBUG_CONSENT_EEA", "false")
+            buildConfigField("boolean", "ADS_NO_COOLDOWN", "false")
         }
     }
     compileOptions {
@@ -128,6 +131,7 @@ dependencies {
     implementation(libs.haze.materials)
 
     // Ads (AdMob) + consent (UMP)
+    implementation(libs.androidx.compose.adaptive)
     implementation(libs.play.services.ads)
     implementation(libs.user.messaging.platform)
 

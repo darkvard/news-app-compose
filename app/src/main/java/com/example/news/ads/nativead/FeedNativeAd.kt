@@ -10,7 +10,7 @@ import com.example.news.ads.policy.NativeAdPlacement
 import com.example.news.ui.theme.Spacing
 
 /**
- * Drop-in for a feed's `afterItem` slot: draws a native ad after the items chosen by [placement].
+ * Content of a feed's native-ad [com.example.news.presentation.common.ListInsert]: the ad for the slot after [index].
  * Nothing at all is drawn until an ad is loaded (no empty gap when there's no ad / no consent).
  */
 @Composable
